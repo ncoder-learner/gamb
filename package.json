@@ -1,8 +1,8 @@
 {
-  "name": "poker-hunk-ultimate",
+  "name": "game-hunk-ultimate",
   "version": "2.0.0",
   "private": true,
-  "description": "Poker Hunk Ultimate - authoritative multiplayer gaming lounge",
+  "description": "Game Hunk - authoritative multiplayer gaming lounge",
   "main": "server.js",
   "scripts": {"start":"node server.js","test":"node --test"},
   "engines": {"node": ">=20"},

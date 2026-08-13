@@ -7,7 +7,7 @@ const { Chess } = require('chess.js');
 const app = express();
 app.use(express.json());
 app.use(express.static('public'));
-app.get('/health', (_req, res) => res.json({ ok: true, service: 'poker-hunk-ultimate', time: new Date().toISOString() }));
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'game-hunk-ultimate', time: new Date().toISOString() }));
 const server = http.createServer(app);
 const allowedOrigins = (process.env.CLIENT_ORIGIN || 'http://localhost:3000').split(',').map(s => s.trim()).filter(Boolean);
 const io = new Server(server, { cors: { origin: allowedOrigins, methods: ['GET','POST'] } });
@@ -179,10 +179,25 @@ io.on('connection',socket=>{
   socket.on('joinRoom',({code,name,reconnectToken}={},ack)=>{code=String(code||'').trim().toUpperCase();const room=rooms.get(code);if(!room)return ack?.({ok:false,error:'Room does not exist.'});if(room.players.length>=MAX_PLAYERS)return ack?.({ok:false,error:'Room is full.'});let p=reconnectToken&&room.players.find(x=>x.reconnectToken===reconnectToken);if(p){p.socketId=socket.id;p.connected=true;p.disconnectedAt=null;}else{p=makePlayer({id:uid(),name:cleanName(name),socketId:socket.id});room.players.push(p);say(room,`${p.name} joined the room.`);}socket.join(code);socket.data.room=code;socket.data.player=p.id;ack?.({ok:true,code,reconnectToken:p.reconnectToken});broadcast(room);emitPrivate(room);});
   socket.on('resumeRoom',({code,reconnectToken}={},ack)=>{const room=rooms.get(String(code||'').toUpperCase());const p=room?.players.find(x=>x.reconnectToken===reconnectToken);if(!room||!p)return ack?.({ok:false,error:'Reconnection token is invalid.'});p.socketId=socket.id;p.connected=true;p.disconnectedAt=null;socket.join(room.code);socket.data.room=room.code;socket.data.player=p.id;ack?.({ok:true});broadcast(room);emitPrivate(room);});
   socket.on('setGame',({game}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id||room.status==='IN_GAME')return ack?.({ok:false,error:'Only the host can choose a lobby game.'});if(!['poker','blackjack','roulette','chess'].includes(game))return ack?.({ok:false,error:'Invalid game.'});room.game=game;room.poker.phase=game==='poker'?'LOBBY':room.poker.phase;broadcast(room);ack?.({ok:true});});
-  socket.on('startGame',({entryBet}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can start.'});if(room.game==='poker'){if(room.players.filter(x=>x.connected&&x.chips>0).length<2)return ack?.({ok:false,error:'Need at least two players.'});startPokerHand(room);}else if(room.game==='blackjack')bjStart(room);else if(room.game==='roulette')rouletteStart(room);else chessStart(room,entryBet);ack?.({ok:true});});
+  socket.on('startGame',({entryBet}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can start.'});if(room.game==='poker'){const eligible=room.players.filter(x=>x.chips>0&&(x.connected||x.bot));if(eligible.length<2)return ack?.({ok:false,error:'Add at least one bot or another player before starting.'});startPokerHand(room);}else if(room.game==='blackjack')bjStart(room);else if(room.game==='roulette')rouletteStart(room);else chessStart(room,entryBet);ack?.({ok:true});});
   socket.on('pokerAction',({action,amount}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);const r=room&&p?pokerAction(room,p,action,amount):{ok:false,error:'Not in a room.'};ack?.(r);});
   socket.on('addBot',({type}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can add bots.'});ack?.(addBot(room,type));});
   socket.on('removeBot',({id}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can remove bots.'});const i=room.players.findIndex(x=>x.id===id&&x.bot);if(i<0)return ack?.({ok:false,error:'Bot not found.'});room.players.splice(i,1);broadcast(room);ack?.({ok:true});});
+  socket.on('leaveRoom',(_,ack)=>{
+    const room=rooms.get(socket.data.room);
+    const p=room?.players.find(x=>x.id===socket.data.player);
+    if(!room||!p)return ack?.({ok:false,error:'You are not in a room.'});
+    if(p.bot)return ack?.({ok:false,error:'Bots cannot leave this way.'});
+    const wasHost=room.hostId===p.id;
+    if(room.game==='poker'&&room.status==='IN_GAME'&&!p.folded&&room.turnPlayerId===p.id){timeoutPoker(room);}
+    const idx=room.players.findIndex(x=>x.id===p.id);
+    if(idx>=0)room.players.splice(idx,1);
+    if(wasHost){const next=room.players.find(x=>x.connected||x.bot);room.hostId=next?.id||null;room.players.forEach(x=>x.host=x.id===room.hostId);if(next)say(room,`${next.name} is now host.`);}
+    say(room,`${p.name} left the room.`);
+    if(!room.players.length){clearTimer(room);rooms.delete(room.code);}else broadcast(room);
+    socket.leave(room.code);socket.data.room=null;socket.data.player=null;
+    ack?.({ok:true});
+  });
   socket.on('chat',({text}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p)return;const t=cleanChat(text);if(!t)return;room.chat.push({id:uid('m'),name:p.name,text:t,system:false,at:Date.now()});room.chat=room.chat.slice(-100);broadcast(room);ack?.({ok:true});});
   socket.on('blackjackBet',({amount}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.game!=='blackjack'||room.blackjack.phase!=='BETTING')return ack?.({ok:false,error:'Betting is closed.'});amount=Number(amount);if(amount<1||amount>p.chips)return ack?.({ok:false,error:'Invalid bet.'});p.chips-=amount;room.blackjack.hands[p.id].bet+=amount;broadcast(room);ack?.({ok:true});});
   socket.on('blackjackAction',({action}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?bjAction(room,p,action):{ok:false,error:'Not in a room.'});});
@@ -192,4 +207,4 @@ io.on('connection',socket=>{
   socket.on('disconnect',()=>{const room=rooms.get(socket.data.room);const p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p)return;p.connected=false;p.socketId=null;p.disconnectedAt=Date.now();if(room.hostId===p.id){const next=room.players.find(x=>x.connected);if(next){room.hostId=next.id;room.players.forEach(x=>x.host=x.id===next.id);say(room,`${next.name} is now host.`);}}if(room.game==='poker'&&room.turnPlayerId===p.id&&['PREFLOP','FLOP','TURN','RIVER'].includes(room.poker.phase)){p.connected=true;setTimeout(()=>{if(!rooms.has(room.code))return;p.connected=false;if(room.turnPlayerId===p.id)timeoutPoker(room);broadcast(room);},1000);}broadcast(room);});
 });
 
-server.listen(PORT,'0.0.0.0',()=>console.log(`Poker Hunk server listening on ${PORT}`));
+server.listen(PORT,'0.0.0.0',()=>console.log(`Game Hunk server listening on ${PORT}`));

@@ -1,4 +1,4 @@
-# Poker Hunk Ultimate
+# Game Hunk
 
 Authoritative multiplayer virtual-chip game lounge using vanilla HTML/CSS/JS, Express and Socket.IO. No real-money gambling is implemented.
 
@@ -19,7 +19,7 @@ For local browser testing, the same Node process serves the frontend as well as 
 2. Create a new Render Web Service from the repository, or use the included `render.yaml` Blueprint.
 3. Build command: `npm install`.
 4. Start command: `npm start`.
-5. Set `CLIENT_ORIGIN` to the exact Netlify origin, for example `https://pokerhunk.netlify.app`.
+5. Set `CLIENT_ORIGIN` to the exact Netlify origin, for example `https://gamehunk.netlify.app`.
 6. Deploy and copy the resulting Render URL, such as `https://poker-hunk-server.onrender.com`.
 
 The server listens on `0.0.0.0` and `process.env.PORT`, and exposes `/health`.
@@ -45,7 +45,7 @@ Replace the placeholder with your real Render URL. You can also override it befo
 
 On Render, set:
 
-`CLIENT_ORIGIN=https://pokerhunk.netlify.app`
+`CLIENT_ORIGIN=https://gamehunk.netlify.app`
 
 Use the exact scheme and hostname and do not add a trailing slash. For a temporary multi-origin setup, comma-separate allowed origins.
 
