@@ -95,7 +95,7 @@ function startPokerHand(room){
   const first=nextPokerActor(room,room.players.indexOf(bb)); room.turnPlayerId=first?.id||null;
   say(room,'Hand started.');
   if(!first || activeCanAct(room)===0){advancePoker(room);} else startTurnTimer(room,()=>timeoutPoker(room));
-  broadcast(room);emitPrivate(room);
+  broadcast(room);emitPrivate(room);botTick(room);
 }
 function postBlindsAndFirst(room){ }
 function bettingComplete(room){
@@ -106,7 +106,7 @@ function advancePoker(room){
   clearTimer(room);
   if(onlyOne(room)){awardFoldWin(room);return;}
   if(activeCanAct(room)>0){
-    const current=room.turnPlayerId?room.players.findIndex(p=>p.id===room.turnPlayerId):-1; const n=nextPokerActor(room,current<0?room.poker.dealerIndex:current); if(n){room.turnPlayerId=n.id;startTurnTimer(room,()=>timeoutPoker(room));broadcast(room);emitPrivate(room);return;}
+    const current=room.turnPlayerId?room.players.findIndex(p=>p.id===room.turnPlayerId):-1; const n=nextPokerActor(room,current<0?room.poker.dealerIndex:current); if(n){room.turnPlayerId=n.id;startTurnTimer(room,()=>timeoutPoker(room));broadcast(room);emitPrivate(room);botTick(room);return;}
   }
   const p=room.poker.phase;
   if(p==='PREFLOP'||p==='FLOP'||p==='TURN'||p==='RIVER'){
@@ -117,7 +117,7 @@ function advancePoker(room){
     resetStreetBets(room);room.players.forEach(p=>{if(!p.folded)p.lastAction='';});
     if(activeCanAct(room)===0){advancePoker(room);return;}
     const first=nextPokerActor(room,room.poker.dealerIndex);room.turnPlayerId=first?.id||null;if(!first){advancePoker(room);return;}
-    startTurnTimer(room,()=>timeoutPoker(room));broadcast(room);emitPrivate(room);return;
+    startTurnTimer(room,()=>timeoutPoker(room));broadcast(room);emitPrivate(room);botTick(room);return;
   }
 }
 function awardFoldWin(room){ const winner=room.players.find(p=>!p.folded&&p.chips+p.bet>0); if(!winner)return; winner.chips+=room.poker.pot; winner.lastAction='WIN';room.poker.winners=[{id:winner.id,amount:room.poker.pot,hand:'Everyone folded'}];say(room,`${winner.name} wins ${room.poker.pot} chips.`,true);room.poker.pot=0;room.poker.phase='HAND_COMPLETE';clearTimer(room);broadcast(room);setTimeout(()=>nextHand(room),1800); }
@@ -142,7 +142,7 @@ function pokerAction(room,p,action,amount){
   if(onlyOne(room)){awardFoldWin(room);return {ok:true};}
   const next=nextPokerActor(room,room.players.indexOf(p)); if(next){room.turnPlayerId=next.id;startTurnTimer(room,()=>timeoutPoker(room));}
   else advancePoker(room);
-  broadcast(room);emitPrivate(room);return {ok:true};
+  broadcast(room);emitPrivate(room);botTick(room);return {ok:true};
 }
 function timeoutPoker(room){ const p=room.players.find(x=>x.id===room.turnPlayerId);if(!p)return advancePoker(room);const toCall=requiredAmount(room,p);p.lastAction=toCall?'FOLD':'CHECK';p.action=p.lastAction;say(room,`${p.name} timed out and ${p.lastAction.toLowerCase()}s.`); if(toCall)p.folded=true; const next=nextPokerActor(room,room.players.indexOf(p)); if(next){room.turnPlayerId=next.id;startTurnTimer(room,()=>timeoutPoker(room));broadcast(room);emitPrivate(room);}else advancePoker(room); }
 

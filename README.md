@@ -20,7 +20,7 @@ For local browser testing, the same Node process serves the frontend as well as 
 3. Build command: `npm install`.
 4. Start command: `npm start`.
 5. Set `CLIENT_ORIGIN` to the exact Netlify origin, for example `https://gamehunk.netlify.app`.
-6. Deploy and copy the resulting Render URL, such as `https://poker-hunk-server.onrender.com`.
+6. Deploy and use the deployed Render URL, such as `https://game-hunk-server.onrender.com`.
 
 The server listens on `0.0.0.0` and `process.env.PORT`, and exposes `/health`.
 
@@ -36,7 +36,7 @@ The server listens on `0.0.0.0` and `process.env.PORT`, and exposes `/health`.
 At the top of `public/app.js`, set the production fallback:
 
 ```js
-const SOCKET_URL = window.POKER_SERVER_URL || "https://YOUR-RENDER-SERVICE.onrender.com";
+const SOCKET_URL = window.POKER_SERVER_URL || "https://gamb-eu6t.onrender.com";
 ```
 
 Replace the placeholder with your real Render URL. You can also override it before the app loads with `window.POKER_SERVER_URL`.
