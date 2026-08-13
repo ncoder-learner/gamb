@@ -1,5 +1,5 @@
 /* Production frontend: the browser sends intents; the server owns game state. */
-const SOCKET_URL = window.POKER_SERVER_URL || "https://gamb-eu6t.onrender.com/";
+const SOCKET_URL = window.POKER_SERVER_URL || "https://YOUR-RENDER-SERVICE.onrender.com";
 const socket = io(SOCKET_URL, { transports:["websocket","polling"], reconnection:true, reconnectionAttempts:Infinity });
 let roomCode='', me=null, state=null, selectedChess=null, toastTimer=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -31,13 +31,24 @@ const pieces={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:
 function renderChess(){const c=state.chess||{};$('#chessStatus').textContent=c.winners?.length?'GAME OVER':`Turn: ${c.turn==='w'?'White':'Black'}`;if(!c.fen)return;const board=c.fen.split(' ')[0];const rows=[];for(const row of board.split('/')){const out=[];for(const ch of row){if(/\d/.test(ch))for(let i=0;i<+ch;i++)out.push(null);else out.push(ch);}rows.push(out);}$('#chessGrid').innerHTML=rows.flatMap((row,r)=>row.map((piece,col)=>{const sq=String.fromCharCode(97+col)+(8-r);return `<div class="sq ${(r+col)%2?'dark':'light'} ${selectedChess===sq?'sel':''}" data-sq="${sq}">${piece?pieces[piece]:''}</div>`;})).join('');$$('#chessGrid .sq').forEach(x=>x.onclick=()=>chessClick(x.dataset.sq));}
 let chessFenPieces=()=>state?.chess?.fen?.split(' ')[0];
 function chessClick(sq){if(!selectedChess){selectedChess=sq;renderChess();return;}const from=selectedChess;selectedChess=null;const piece=prompt('Promotion piece (q/r/b/n) or leave blank:','');const move={from,to:sq};if(piece)move.promotion=piece.toLowerCase();ackCall('chessMove',{move}).then(r=>{if(!r.ok)toast(r.error||'Illegal move');});renderChess();}
-$('#createBtn').onclick=()=>{const name=prompt('Your player name:','Player');if(!name)return;ackCall('createRoom',{name}).then(r=>{if(!r.ok)toast(r.error||'Could not create room');});};
-$('#joinBtn').onclick=()=>openModal(`<span class="eyebrow">JOIN ROOM</span><h2>Enter your seat</h2><input id="joinCode" class="modal-input" maxlength="6" placeholder="ROOM CODE"><input id="joinName" class="modal-input" maxlength="18" placeholder="YOUR NAME"><button class="btn primary full" id="doJoin">JOIN ROOM</button>`);
+const savedName=()=>localStorage.getItem('ph_name')||'';
+function rememberName(name){const n=String(name||'').trim().slice(0,18);if(n)localStorage.setItem('ph_name',n);return n;}
+function nameModal(mode,code=''){
+  const join=mode==='join';
+  openModal(`<span class="eyebrow">${join?'JOIN ROOM':'CREATE ROOM'}</span><h2>${join?'Enter your seat':'Choose your player name'}</h2><p class="modal-sub">Your name is saved on this device so you won't have to type it every time.</p>${join?'<label class="modal-label">ROOM CODE</label><input id="joinCode" class="modal-input" maxlength="6" placeholder="ABC123" autocomplete="off">':''}<label class="modal-label">YOUR NAME</label><input id="playerName" class="modal-input" maxlength="18" placeholder="Your name" value="${esc(savedName())}" autocomplete="nickname"><button class="btn primary full" id="${join?'doJoin':'doCreate'}">${join?'JOIN ROOM':'CREATE ROOM'}</button>`);
+  setTimeout(()=>$('#playerName')?.focus(),30);
+}
+$('#createBtn').onclick=()=>nameModal('create');
+$('#joinBtn').onclick=()=>nameModal('join');
 $('#modalClose').onclick=closeModal;
 $('#modal').addEventListener('click',e=>{if(e.target.id==='modal')closeModal();});
-document.addEventListener('click',e=>{if(e.target.id==='doJoin'){const code=$('#joinCode').value.trim(),name=$('#joinName').value.trim();ackCall('joinRoom',{code,name}).then(r=>{if(!r.ok)toast(r.error);else closeModal();});}});
+document.addEventListener('click',e=>{
+  if(e.target.id==='doCreate'){const name=rememberName($('#playerName')?.value);if(!name)return toast('Please enter your name.');ackCall('createRoom',{name}).then(r=>{if(!r.ok)toast(r.error||'Could not create room');else closeModal();});}
+  if(e.target.id==='doJoin'){const code=$('#joinCode').value.trim().toUpperCase(),name=rememberName($('#playerName')?.value);if(!name)return toast('Please enter your name.');if(code.length<5)return toast('Enter a valid room code.');ackCall('joinRoom',{code,name}).then(r=>{if(!r.ok)toast(r.error);else closeModal();});}
+  if(e.target.id==='doLeave'){leaveRoom();}
+});
 $$('.game-tab').forEach(b=>b.onclick=()=>ackCall('setGame',{game:b.dataset.game}).then(r=>{if(!r.ok)toast(r.error);}));
-$('#startBtn').onclick=()=>ackCall('startGame',{}).then(r=>{if(!r.ok)toast(r.error);});
+$('#startBtn').onclick=async()=>{const b=$('#startBtn');b.disabled=true;b.textContent='STARTING…';const r=await ackCall('startGame',{});if(!r.ok)toast(r.error||'Could not start game.');setTimeout(()=>{b.textContent='START GAME';renderLobby();},350);};
 $('#copyRoom').onclick=async()=>{await navigator.clipboard?.writeText(roomCode);toast('Room code copied.');};
 $('#addBotBtn').onclick=()=>openModal(`<span class="eyebrow">SERVER-SIDE BOTS</span><h2>Choose a personality</h2><div class="bot-grid">${['Ace','Shark','Bluff','Lucky','Dealer','River','Pocket','Wildcard'].map(x=>`<button class="bot-option" data-bot="${x}"><b>${x}</b><span>${({Ace:'Tight · Conservative',Shark:'Aggressive · Pressure',Bluff:'High bluff · Unpredictable',Lucky:'Loose · Calls often',Dealer:'Conservative · Low variance',River:'Balanced',Pocket:'Tight-aggressive',Wildcard:'Highly unpredictable'})[x]}</span></button>`).join('')}</div>`);
 document.addEventListener('click',e=>{const b=e.target.closest('[data-bot]');if(b)ackCall('addBot',{type:b.dataset.bot}).then(r=>{if(!r.ok)toast(r.error);else closeModal();});});
@@ -46,6 +57,9 @@ $$('[data-bj]').forEach(b=>b.onclick=()=>ackCall('blackjackAction',{action:b.dat
 $('#bjBetBtn').onclick=()=>ackCall('blackjackBet',{amount:Number($('#bjBet').value)}).then(r=>{if(!r.ok)toast(r.error);});
 $('#spinBtn').onclick=()=>ackCall('rouletteSpin',{}).then(r=>{if(!r.ok)toast(r.error);});
 $$('.bet-chip').forEach(b=>b.onclick=()=>{const amount=Number(prompt('Bet amount:','25'));if(amount>0)ackCall('rouletteBet',{type:b.dataset.type,value:'',amount}).then(r=>{if(!r.ok)toast(r.error);});});
-$('#leaveBtn').onclick=()=>{localStorage.removeItem('ph_session');location.reload();};
+async function leaveRoom(){if(!roomCode)return;const r=await ackCall('leaveRoom',{});if(!r.ok){toast(r.error||'Could not leave room.');return;}localStorage.removeItem('ph_session');roomCode='';state=null;me=null;showScreen('home');toast('You left the room.');}
+$('#leaveBtn').onclick=leaveRoom;$('#leaveLobbyBtn').onclick=leaveRoom;
 function chat(form,input){$(form).onsubmit=e=>{e.preventDefault();const v=$(input).value.trim();if(v)ackCall('chat',{text:v});$(input).value='';};}chat('#chatForm','#chatInput');chat('#gameChatForm','#gameChatInput');
 setInterval(()=>{if(state?.turnPlayerId&&state.game==='poker')renderTimer();},500);
+
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
