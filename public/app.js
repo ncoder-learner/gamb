@@ -1,5 +1,5 @@
 /* Production frontend: the browser sends intents; the server owns game state. */
-const SOCKET_URL = window.POKER_SERVER_URL || "https://YOUR-RENDER-SERVICE.onrender.com";
+const SOCKET_URL = window.POKER_SERVER_URL || "https://gamb-eu6t.onrender.com";
 const socket = io(SOCKET_URL, { transports:["websocket","polling"], reconnection:true, reconnectionAttempts:Infinity });
 let roomCode='', me=null, state=null, selectedChess=null, toastTimer=null;
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
