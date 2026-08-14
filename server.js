@@ -52,7 +52,7 @@ function eval5(cards){
 }
 function eval7(cards){return combos(cards,5).sort((a,b)=>cmp(eval5(b),eval5(a)))[0] ? eval5(combos(cards,5).sort((a,b)=>cmp(eval5(b),eval5(a)))[0]) : [0];}
 function cmp(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d;}return 0;}
-function player({id=uid(),name='Player',bot=false,botType=null,socketId=null}){return {id,name:cleanName(name),bot,botType,socketId,connected:!!socketId,host:false,chips:STARTING_CHIPS,folded:false,allIn:false,bet:0,totalBet:0,hole:[],action:'',lastAction:'',reconnectToken:uid('rt')}}
+function player({id=uid(),name='Player',bot=false,botType=null,socketId=null}){return {id,name:cleanName(name),bot,botType,socketId,connected:!!socketId,host:false,chips:STARTING_CHIPS,folded:false,allIn:false,bet:0,totalBet:0,hole:[],action:'',lastAction:'',reconnectToken:uid('rt'),refillUsed:false}}
 function newRoom(host){host.host=true;return {code:roomCode(),hostId:host.id,players:[host],game:'poker',status:'LOBBY',chat:[],turnPlayerId:null,turnEndsAt:null,timer:null,poker:{phase:'LOBBY',deck:[],community:[],pot:0,highestBet:0,minRaise:BIG_BLIND,dealerIndex:0,needsAction:new Set(),winners:[],handNo:0},blackjack:{phase:'BETTING',deck:[],hands:{},dealer:[],hidden:true},roulette:{phase:'BETTING',bets:[],result:null},chess:{game:null,white:null,black:null,wagerPot:0,winners:[]}}}
 function say(room,text){room.chat.push({id:uid('m'),name:'SYSTEM',text,system:true,at:Date.now()});room.chat=room.chat.slice(-80);}
 function connected(room){return room.players.filter(p=>p.connected||p.bot)}
@@ -61,7 +61,7 @@ function bjPublic(room){return {phase:room.blackjack.phase,dealer:room.blackjack
 function roulettePublic(room){return {phase:room.roulette.phase,bets:room.roulette.bets.map(b=>({...b})),result:room.roulette.result}}
 function chessPublic(room){return {fen:room.chess.game?.fen()||null,turn:room.chess.game?.turn()||null,white:room.chess.white,black:room.chess.black,winners:room.chess.winners}}
 function publicState(room){return {code:room.code,game:room.game,status:room.status,hostId:room.hostId,players:room.players.map(publicPlayer),chat:room.chat,turnPlayerId:room.turnPlayerId,turnEndsAt:room.turnEndsAt,poker:{phase:room.poker.phase,community:room.poker.community.map(cardText),pot:room.poker.pot,highestBet:room.poker.highestBet,minRaise:room.poker.minRaise,dealerIndex:room.poker.dealerIndex,winners:room.poker.winners,handNo:room.poker.handNo},blackjack:bjPublic(room),roulette:roulettePublic(room),chess:chessPublic(room),serverNow:Date.now()}}
-function privateState(room,p){const s=publicState(room);s.me={id:p.id,reconnectToken:p.reconnectToken,hole:p.hole.map(cardText),name:p.name};return s}
+function privateState(room,p){const s=publicState(room);s.me={id:p.id,reconnectToken:p.reconnectToken,hole:p.hole.map(cardText),name:p.name,chips:p.chips,refillUsed:p.refillUsed,refillAvailable:!p.bot&&p.chips<=0&&!p.refillUsed};return s}
 function broadcast(room){io.to(room.code).emit('state',publicState(room));for(const p of room.players)if(p.socketId)io.to(p.socketId).emit('state',privateState(room,p));}
 function clearTimer(room){if(room.timer)clearTimeout(room.timer);room.timer=null;room.turnEndsAt=null;}
 function setTurn(room,p,cb){clearTimer(room);room.turnPlayerId=p?.id||null;if(p){room.turnEndsAt=Date.now()+TURN_MS;room.timer=setTimeout(cb,TURN_MS)}}
@@ -117,8 +117,55 @@ function showdown(room){
   room.poker.pot=0;room.poker.phase='HAND_COMPLETE';room.turnPlayerId=null;room.poker.winners=[...payouts.entries()].map(([id,amount])=>{const d=details.find(x=>x.id===id);return {id,amount,hand:d?.hand||'Winner'}});room.players.forEach(p=>{if(p.hole.length)p.lastAction=room.poker.winners.some(w=>w.id===p.id)?'WIN':'SHOWDOWN'});say(room,room.poker.winners.map(w=>`${room.players.find(p=>p.id===w.id)?.name} wins ${w.amount} (${w.hand})`).join(' • ')||'Showdown complete.');broadcast(room);setTimeout(()=>nextHand(room),3000)}
 function nextHand(room){if(!rooms.has(room.code))return;const n=room.players.filter(p=>p.chips>0&&(p.connected||p.bot)).length;if(n>=2){room.poker.dealerIndex=(room.poker.dealerIndex+1)%room.players.length;startPokerHand(room)}else{room.status='LOBBY';room.poker.phase='LOBBY';broadcast(room)}}
 function estimateStrength(p,room){if(!p.hole.length)return .1;const cards=[...p.hole,...room.poker.community];const r=room.poker.community.length?eval7(cards):[0,Math.max(rv(p.hole[0].r),rv(p.hole[1].r))];return Math.min(1,(r[0]*.10+(r[1]||5)/20))}
-function botTick(room){if(!rooms.has(room.code))return;if(room.game==='poker'&&room.turnPlayerId){const p=room.players.find(x=>x.id===room.turnPlayerId);if(p?.bot&&!p._botPending){p._botPending=true;setTimeout(()=>{p._botPending=false;if(room.turnPlayerId!==p.id)return;const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;const call=required(room,p),s=estimateStrength(p,room);let a='check',amt;const r=Math.random();if(call>0){if(s<cfg.tight*.28&&r>cfg.bluff)a='fold';else if(r<cfg.aggression&&p.chips+ p.bet>room.poker.highestBet+room.poker.minRaise){a='raise';amt=Math.min(p.bet+p.chips,room.poker.highestBet+room.poker.minRaise)}else a='call'}else{if(r<cfg.aggression*.35&&p.chips>room.poker.minRaise){a='raise';amt=Math.min(p.bet+p.chips,room.poker.highestBet+room.poker.minRaise)}else a='check'}pokerAction(room,p,a,amt)},900+crypto.randomInt(900))}}
-  if(room.game==='blackjack'&&room.turnPlayerId){const p=room.players.find(x=>x.id===room.turnPlayerId);if(p?.bot&&!p._botPending){p._botPending=true;setTimeout(()=>{p._botPending=false;const h=room.blackjack.hands[p.id];if(h&&!h.done)bjAction(room,p,bjValue(h.cards).total<17?'hit':'stand')},900+crypto.randomInt(700))}}
+function botPokerDecision(room,p){
+  const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;
+  const call=required(room,p),s=estimateStrength(p,room);
+  const minTo=room.poker.highestBet+room.poker.minRaise;
+  const maxTo=p.bet+p.chips;
+  let a='check',amt;
+  const r=Math.random();
+  if(call>0){
+    if(s<cfg.tight*.28&&r>cfg.bluff)a='fold';
+    else if(r<cfg.aggression&&maxTo>=minTo){a='raise';amt=Math.min(maxTo,minTo+room.poker.minRaise)}
+    else a='call';
+  }else{
+    if(r<cfg.aggression*.35&&p.chips>=room.poker.minRaise&&maxTo>=minTo){a='raise';amt=Math.min(maxTo,minTo+room.poker.minRaise)}
+    else a='check';
+  }
+  let res=pokerAction(room,p,a,amt);
+  if(!res.ok&&call>0)res=pokerAction(room,p,'call');
+  if(!res.ok)res=pokerAction(room,p,'check');
+  if(!res.ok&&call>0)res=pokerAction(room,p,'fold');
+  if(!res.ok)botTick(room);
+}
+function botTick(room){
+  if(!rooms.has(room.code))return;
+  if(room.game==='poker'&&room.turnPlayerId){
+    const p=room.players.find(x=>x.id===room.turnPlayerId);
+    if(p?.bot&&!p._botPending){
+      p._botPending=true;
+      setTimeout(()=>{p._botPending=false;if(room.turnPlayerId!==p.id||!rooms.has(room.code))return;botPokerDecision(room,p)},700+crypto.randomInt(800));
+    }
+  }
+  if(room.game==='blackjack'&&room.turnPlayerId){
+    const p=room.players.find(x=>x.id===room.turnPlayerId);
+    if(p?.bot&&!p._botPending){
+      p._botPending=true;
+      setTimeout(()=>{
+        p._botPending=false;
+        if(room.turnPlayerId!==p.id||!rooms.has(room.code))return;
+        const h=room.blackjack.hands[p.id];
+        if(!h||h.done)return;
+        const total=bjValue(h.cards).total;
+        let action='stand';
+        if(total<12)action='hit';
+        else if(total<17)action='hit';
+        else if(total===11&&h.cards.length===2&&p.chips>=h.bet&&Math.random()<.35)action='double';
+        const res=bjAction(room,p,action);
+        if(!res.ok)bjAction(room,p,total<17?'hit':'stand');
+      },700+crypto.randomInt(700));
+    }
+  }
 }
 
 // Blackjack
@@ -137,9 +184,10 @@ function rouletteSpin(room){if(room.roulette.phase!=='BETTING')return;room.roule
 // Chess
 function chessStart(room,entryBet=0){const ps=room.players.filter(p=>p.connected||p.bot);if(ps.length<2){return}room.status='IN_GAME';room.chess={game:new Chess(),white:ps[0].id,black:ps[1].id,wagerPot:0,winners:[]};entryBet=Math.max(0,Number(entryBet)||0);if(entryBet>0){for(const p of ps.slice(0,2)){if(p.chips<entryBet){say(room,`${p.name} cannot cover the entry bet.`);room.status='LOBBY';return}p.chips-=entryBet;room.chess.wagerPot+=entryBet}}say(room,`${ps[0].name} is White. ${ps[1].name} is Black.`);broadcast(room);botChessTick(room)}
 function chessMove(room,p,move){const g=room.chess.game;if(!g)return {ok:false,error:'Chess has not started.'};const side=g.turn()==='w'?room.chess.white:room.chess.black;if(side!==p.id)return {ok:false,error:'It is not your turn.'};try{g.move(move)}catch{return {ok:false,error:'Illegal chess move.'}}if(g.isGameOver()){let winner=null;if(g.isCheckmate())winner=g.turn()==='w'?room.chess.black:room.chess.white;if(winner){const wp=room.players.find(x=>x.id===winner);wp.chips+=room.chess.wagerPot;room.chess.winners=[{id:winner,amount:room.chess.wagerPot}]}room.chess.wagerPot=0;say(room,g.isCheckmate()?`${room.players.find(x=>x.id===winner)?.name} wins by checkmate.`:'Chess is a draw.');}broadcast(room);botChessTick(room);return {ok:true}}
-function botChessTick(room){const g=room.chess.game;if(!g)return;const id=g.turn()==='w'?room.chess.white:room.chess.black;const p=room.players.find(x=>x.id===id);if(!p?.bot||p._botPending||g.isGameOver())return;p._botPending=true;setTimeout(()=>{p._botPending=false;const moves=g.moves({verbose:true});if(!moves.length)return;const m=moves[crypto.randomInt(moves.length)];chessMove(room,p,{from:m.from,to:m.to,promotion:m.promotion||'q'})},800+crypto.randomInt(1000))}
+function botChessTick(room){const g=room.chess.game;if(!g||g.isGameOver())return;const id=g.turn()==='w'?room.chess.white:room.chess.black;const p=room.players.find(x=>x.id===id);if(!p?.bot||p._botPending)return;p._botPending=true;setTimeout(()=>{p._botPending=false;if(!rooms.has(room.code))return;const game=room.chess.game;if(!game||game.isGameOver())return;const side=game.turn()==='w'?room.chess.white:room.chess.black;if(side!==p.id)return;const moves=game.moves({verbose:true});if(!moves.length)return;const m=moves[crypto.randomInt(moves.length)];const res=chessMove(room,p,{from:m.from,to:m.to,promotion:m.promotion||'q'});if(!res.ok&&moves.length)chessMove(room,p,{from:moves[0].from,to:moves[0].to,promotion:moves[0].promotion||'q'})},700+crypto.randomInt(900))}
 
-function addBot(room,type){if(!BOT_TYPES[type])return {ok:false,error:'Unknown bot personality.'};if(room.players.length>=MAX_PLAYERS)return {ok:false,error:'Room is full.'};const p=player({name:type,bot:true,botType:type});p.connected=true;room.players.push(p);say(room,`${type} joined the room as a bot.`);broadcast(room);return {ok:true}}
+function addBot(room,type){if(!BOT_TYPES[type])return {ok:false,error:'Unknown bot personality.'};if(room.players.length>=MAX_PLAYERS)return {ok:false,error:'Room is full.'};const p=player({name:type,bot:true,botType:type});p.connected=true;room.players.push(p);say(room,`${type} joined the room as a bot.`);broadcast(room);if(room.status==='IN_GAME')botTick(room);return {ok:true}}
+function claimRefill(room,p){if(p.bot)return {ok:false,error:'Bots cannot claim refills.'};if(p.refillUsed)return {ok:false,error:'You already used your one-time bonus.'};if(p.chips>0)return {ok:false,error:'Refills are only available at zero chips.'};p.chips=1000;p.refillUsed=true;say(room,`${p.name} claimed the one-time 1,000 chip bonus.`);broadcast(room);return {ok:true,amount:1000}}
 function removePlayer(room,p){const wasHost=room.hostId===p.id;room.players=room.players.filter(x=>x.id!==p.id);if(wasHost){const n=room.players.find(x=>x.connected||x.bot);room.hostId=n?.id||null;room.players.forEach(x=>x.host=x.id===room.hostId)}if(!room.players.length){clearTimer(room);rooms.delete(room.code);return}if(room.game==='poker'&&room.status==='IN_GAME'&&!p.folded){p.folded=true;room.poker.needsAction.delete(p.id);if(room.turnPlayerId===p.id)advancePoker(room)}say(room,`${p.name} left the room.`);broadcast(room)}
 
 io.on('connection',socket=>{
@@ -156,6 +204,7 @@ io.on('connection',socket=>{
   socket.on('rouletteBet',({type,value,amount}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?rouletteBet(room,p,type,value,amount):{ok:false,error:'Not in a room.'})});
   socket.on('rouletteSpin',(_,ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can spin.'});rouletteSpin(room);ack?.({ok:true})});
   socket.on('chessMove',({move}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?chessMove(room,p,move):{ok:false,error:'Not in a room.'})});
+  socket.on('claimRefill',(_,ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?claimRefill(room,p):{ok:false,error:'Not in a room.'})});
   socket.on('chat',({text}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p)return ack?.({ok:false,error:'Not in a room.'});const t=cleanChat(text);if(!t)return ack?.({ok:false,error:'Empty message.'});room.chat.push({id:uid('m'),name:p.name,text:t,system:false,at:Date.now()});room.chat=room.chat.slice(-80);broadcast(room);ack?.({ok:true})});
   socket.on('leaveRoom',(_,ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p)return ack?.({ok:false,error:'You are not in a room.'});removePlayer(room,p);socket.leave(room.code);socket.data.room=null;socket.data.player=null;ack?.({ok:true})});
   socket.on('disconnect',()=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p)return;p.connected=false;p.socketId=null;if(room.hostId===p.id){const n=room.players.find(x=>x.connected||x.bot);if(n){room.hostId=n.id;room.players.forEach(x=>x.host=x.id===n.id)}}if(room.game==='poker'&&room.status==='IN_GAME'&&room.turnPlayerId===p.id)timeoutPoker(room);broadcast(room)});
