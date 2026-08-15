@@ -1,4 +1,5 @@
 const SOCKET_URL = window.POKER_SERVER_URL || 'https://gamb-eu6t.onrender.com';
+const API_URL = window.POKER_SERVER_URL || SOCKET_URL;
 const socket = io(SOCKET_URL,{transports:['websocket','polling'],reconnection:true,reconnectionAttempts:Infinity});
 let state=null,roomCode='',me=null,toastTimer=null,selectedChess=null,account=null,accountToken=localStorage.getItem('gh_account_token')||'',authMode='register';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
@@ -10,7 +11,7 @@ function showScreen(id){$$('.screen').forEach(x=>x.classList.remove('active'));$
 function openModal(html){$('#modalContent').innerHTML=html;$('#modal').classList.remove('hidden')}
 function closeModal(){$('#modal').classList.add('hidden')}
 function call(event,payload){return new Promise(resolve=>socket.emit(event,payload||{},r=>resolve(r||{})))}
-async function api(path,opts={}){const headers={'Content-Type':'application/json',...(opts.headers||{})};if(accountToken)headers.Authorization='Bearer '+accountToken;const r=await fetch(path,{...opts,headers});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Request failed');return j}
+async function api(path,opts={}){const headers={'Content-Type':'application/json',...(opts.headers||{})};if(accountToken)headers.Authorization='Bearer '+accountToken;const r=await fetch(API_URL+path,{...opts,headers});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Request failed');return j}
 async function loadAccount(){if(!accountToken){renderAuth();return}try{const j=await api('/api/me');account=j.account;renderAccount();showScreen(state?'lobby':'home')}catch{localStorage.removeItem('gh_account_token');accountToken='';renderAuth()}}
 function renderAccount(){if($('#vaultTokens'))$('#vaultTokens').textContent=`${(account?.tokens||0).toLocaleString()} 🪙`}
 function renderAuth(){showScreen('auth');const host=$('#authForm');host.innerHTML=`<label class="modal-label">USERNAME</label><input id="authName" class="modal-input" maxlength=18 placeholder="3–18 characters"><label class="modal-label">PASSWORD</label><input id="authPassword" class="modal-input" type="password" minlength=6 placeholder="At least 6 characters"><button class="btn primary full" id="authSubmit">${authMode==='register'?'CREATE ACCOUNT':'SIGN IN'}</button><p class="auth-note">Tokens are virtual and have no cash value.</p>`;$$('.auth-tab').forEach(b=>b.classList.toggle('active',b.dataset.auth===authMode))}
