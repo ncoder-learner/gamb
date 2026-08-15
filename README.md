@@ -1,68 +1,54 @@
 # Game Hunk
 
-Authoritative multiplayer virtual-chip game lounge using vanilla HTML/CSS/JS, Express and Socket.IO. No real-money gambling is implemented.
+Game Hunk is a Netlify frontend + Node/Express/Socket.IO authoritative multiplayer game server.
 
-## 1. Run locally
+## Local
 
 ```bash
 npm install
-CLIENT_ORIGIN=http://localhost:3000 npm start
+npm start
 ```
 
 Open `http://localhost:3000`.
 
-For local browser testing, the same Node process serves the frontend as well as Socket.IO. Production Netlify uses the static `public/` folder while the Node server runs separately.
+## Accounts
 
-## 2. Deploy the backend to Render
+Accounts use server-side password hashing. A local `data.json` file stores account data. For production persistence across Render restarts/redeploys, move the account store to a persistent database (for example Postgres) before relying on it as a long-term account system.
 
-1. Push this folder to GitHub.
-2. Create a new Render Web Service from the repository, or use the included `render.yaml` Blueprint.
-3. Build command: `npm install`.
-4. Start command: `npm start`.
-5. Set `CLIENT_ORIGIN` to the exact Netlify origin, for example `https://gamehunk.netlify.app`.
-6. Deploy and copy the resulting Render URL, such as `https://poker-hunk-server.onrender.com`.
+New accounts start with 1,000 virtual tokens. Creating/joining a room automatically moves up to 1,000 tokens from the vault into the table wallet. Use **DEPOSIT** to return chips to the vault and **WITHDRAW** to move more tokens into the current table.
 
-The server listens on `0.0.0.0` and `process.env.PORT`, and exposes `/health`.
+Tokens are virtual only and have no cash value.
 
-## 3. Deploy the frontend to Netlify
+## Render
 
-1. Create a Netlify site from the same repository.
-2. Netlify reads `netlify.toml` and publishes `public/`.
-3. No Node server is required on Netlify.
-4. The Socket.IO client connects directly to the Render backend.
+Create a Render Web Service from this repository.
 
-## 4. Put the Render URL in the frontend
+- Build: `npm install`
+- Start: `npm start`
+- Environment: `CLIENT_ORIGIN=https://YOUR-NETLIFY-DOMAIN.netlify.app`
 
-At the top of `public/app.js`, set the production fallback:
+The server listens on `0.0.0.0` and `process.env.PORT`.
 
-```js
-const SOCKET_URL = window.POKER_SERVER_URL || "https://YOUR-RENDER-SERVICE.onrender.com";
-```
+## Netlify
 
-Replace the placeholder with your real Render URL. You can also override it before the app loads with `window.POKER_SERVER_URL`.
+Netlify publishes `public/` using `netlify.toml`.
 
-## 5. Configure CLIENT_ORIGIN
+The frontend currently connects to:
 
-On Render, set:
+`https://gamb-eu6t.onrender.com`
 
-`CLIENT_ORIGIN=https://gamehunk.netlify.app`
+Change `SOCKET_URL` in `public/app.js` if the backend URL changes.
 
-Use the exact scheme and hostname and do not add a trailing slash. For a temporary multi-origin setup, comma-separate allowed origins.
+## Shop
 
-## 6. How multiplayer works
+The shop sells cosmetic collectibles only. Purchases and equipped items are server-side account data.
 
-The browser sends intent only: join room, bet, move, chat, etc. The Node server owns rooms, chips, decks, turns, cards, outcomes and timers. Each room supports up to 8 seats. Hosts are server-assigned; if a host disconnects, a connected player becomes host. Reconnection tokens let a recently disconnected human reclaim their seat.
+## Rewarded ads
 
-Texas Hold'em uses explicit `LOBBY`, `PREFLOP`, `FLOP`, `TURN`, `RIVER`, `SHOWDOWN`, and `HAND_COMPLETE` phases. Betting rounds use a deterministic pending-player/required-bet model, so preflop and later streets cannot silently stall. All-in players are removed from action while remaining players continue; if nobody can act, the server deals remaining streets automatically.
+The supplied Google publisher script is included in `public/index.html`. The **WATCH AD · +200** control is intentionally not allowed to mint tokens from a browser click. The server currently returns a configuration error until a supported rewarded-ad completion/verification callback is wired to `/api/reward-ad`.
 
-Blackjack uses a server-side 52-card deck, dealer stands on all 17s (including soft 17), blackjack pays 3:2, pushes return the wager, and double-down is limited to the first two cards. Roulette uses American 0/00 with server-selected results and standard virtual-chip payouts. Chess uses `chess.js` for legal move validation, check/checkmate/stalemate, castling, en passant and promotion.
+Google's rewarded-ad rules require clear disclosure, affirmative opt-in, and delivery of the promised reward only after the required action is completed. See Google's current rewarded-ad policies before enabling the token grant.
 
-## 7. Add bots
+## Multiplayer
 
-The host sees `+ ADD BOT` in a room. Choose a personality and click Add. Bots are server-side players with their own IDs, chips and decision parameters. They use the same legal action handlers as humans and act after short server-side delays.
-
-Supported poker personalities: Ace, Shark, Bluff, Lucky, Dealer, River, Pocket and Wildcard.
-
-## Health check
-
-`GET /health` returns a small JSON status payload.
+Socket.IO connects browsers to the Node server. The server owns rooms, cards, decks, chip balances, turns, roulette results, blackjack outcomes, and chess legality.
