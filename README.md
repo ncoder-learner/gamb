@@ -52,3 +52,14 @@ Google's rewarded-ad rules require clear disclosure, affirmative opt-in, and del
 ## Multiplayer
 
 Socket.IO connects browsers to the Node server. The server owns rooms, cards, decks, chip balances, turns, roulette results, blackjack outcomes, and chess legality.
+
+
+## Required Render environment variable
+
+Set `CLIENT_ORIGIN` to your exact Netlify production URL, for example:
+
+`https://gamehunk.netlify.app`
+
+Do not include a trailing slash.
+
+The frontend sends account API requests to the Render server at `https://gamb-eu6t.onrender.com`.

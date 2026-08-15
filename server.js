@@ -8,6 +8,18 @@ const { Chess } = require('chess.js');
 
 const app = express();
 app.use(express.json({limit:'32kb'}));
+const CLIENT_ORIGIN = (process.env.CLIENT_ORIGIN || '').split(',').map(x=>x.trim()).filter(Boolean);
+app.use((req,res,next)=>{
+  const origin = req.headers.origin;
+  if (origin && CLIENT_ORIGIN.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS');
+  }
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 const DATA_FILE = path.join(__dirname, 'data.json');
 let accounts = {};
@@ -23,7 +35,7 @@ const SHOP = [
 ];
 function saveAccounts(){try{fs.writeFileSync(DATA_FILE,JSON.stringify(accounts,null,2));}catch{}}
 function hashPassword(password,salt=crypto.randomBytes(16).toString('hex')){return {salt,hash:crypto.scryptSync(String(password),salt,64).toString('hex')}}
-function verifyPassword(password,a){try{return crypto.timingSafeEqual(Buffer.from(hashPassword(password,a.salt).hash,'hex'),Buffer.from(a.hash,'hex'));}catch{return false}}
+function verifyPassword(password,a){try{return crypto.timingSafeEqual(Buffer.from(hashPassword(password,a.salt).hash,'hex'),Buffer.from(a.passwordHash,'hex'));}catch{return false}}
 function accountFromToken(token){const id=sessions.get(token);return id?accounts[id]:null}
 function accountResponse(a){return {id:a.id,name:a.name,tokens:a.tokens,inventory:a.inventory,equipped:a.equipped}}
 function cleanUsername(s){return String(s||'').replace(/[^a-zA-Z0-9_ -]/g,'').trim().slice(0,18)}
@@ -37,7 +49,6 @@ app.post('/api/shop/equip',(req,res)=>{const a=accountFromToken(String(req.heade
 app.post('/api/reward-ad',(req,res)=>{const a=accountFromToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));if(!a)return res.status(401).json({error:'Not signed in.'});return res.status(501).json({error:'Rewarded ads are not verified on this server yet. Configure a supported rewarded-ad callback before enabling token grants.'})});
 app.get('/health', (_req,res)=>res.json({ok:true,service:'game-hunk'}));
 const server = http.createServer(app);
-const CLIENT_ORIGIN = (process.env.CLIENT_ORIGIN || 'http://localhost:3000').split(',').map(x=>x.trim()).filter(Boolean);
 const io = new Server(server,{cors:{origin:CLIENT_ORIGIN,methods:['GET','POST']}});
 
 const PORT = Number(process.env.PORT || 3000);
