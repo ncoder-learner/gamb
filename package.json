@@ -4,7 +4,7 @@
   "private": true,
   "description": "Game Hunk - authoritative multiplayer gaming lounge",
   "main": "server.js",
-  "scripts": {"start":"node server.js","test":"node --test"},
+  "scripts": {"start":"node server.js","build":"node --check public/app.js","test":"node --test"},
   "engines": {"node": ">=20"},
   "dependencies": {"chess.js":"^1.4.0","express":"^5.1.0","socket.io":"^4.8.1"}
 }
