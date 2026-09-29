@@ -1,6 +1,6 @@
 const SOCKET_URL = window.POKER_SERVER_URL || 'https://gamb-eu6t.onrender.com';
 const API_URL = window.POKER_SERVER_URL || SOCKET_URL;
-const socket = io(SOCKET_URL,{auth:{accountToken:localStorage.getItem('gh_account_token')||''},transports:['websocket','polling'],reconnection:true,reconnectionAttempts:Infinity});
+const socket = window.io ? io(SOCKET_URL,{auth:{accountToken:localStorage.getItem('gh_account_token')||''},transports:['websocket','polling'],reconnection:true,reconnectionAttempts:Infinity}) : {connected:false,auth:{},on(){return this},emit(event,payload,cb){if(typeof cb==='function')cb({ok:false,error:'Realtime server unavailable. Refresh the page and try again.'});return this},disconnect(){return this},connect(){return this}};
 function syncSocketAuth(){socket.auth={accountToken};if(socket.connected)socket.disconnect().connect();}
 let state=null,roomCode='',me=null,toastTimer=null,selectedChess=null,account=null,accountToken=localStorage.getItem('gh_account_token')||'',authMode='register';
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
