@@ -13,11 +13,11 @@ Open `http://localhost:3000`.
 
 ## Accounts
 
-Accounts use server-side password hashing. A local `data.json` file stores account data. For production persistence across Render restarts/redeploys, move the account store to a persistent database (for example Postgres) before relying on it as a long-term account system.
+Accounts use server-side password hashing. The current development store is a local `data.json` file; this is suitable for local testing but is **not durable across ephemeral Render restarts**. A production deployment should move account/token/history data to a persistent database before treating it as long-term storage.
 
-New accounts start with 1,000 virtual tokens. Creating/joining a room automatically moves up to 1,000 tokens from the vault into the table wallet. Use **DEPOSIT** to return chips to the vault and **WITHDRAW** to move more tokens into the current table.
+New accounts receive 1,000 virtual tokens. Tokens are non-redeemable and have no cash value.
 
-Tokens are virtual only and have no cash value.
+The rebuild adds persistent session hashes, transaction history, game statistics, daily rewards, profile editing, leaderboard data, and server-side quick games.
 
 ## Render
 
@@ -51,8 +51,11 @@ Google's rewarded-ad rules require clear disclosure, affirmative opt-in, and del
 
 ## Multiplayer
 
-Socket.IO connects browsers to the Node server. The server owns rooms, cards, decks, chip balances, turns, roulette results, blackjack outcomes, and chess legality.
+Socket.IO connects browsers to the Node server. The server owns rooms, cards, decks, turns, roulette results, blackjack outcomes, and chess legality. Random outcomes use Node's crypto random generator.
 
+## Rebuild status
+
+The rebuild branch is `rebuild/game-hunk-v3`. It adds profile/history/daily/leaderboard APIs, persistent session hashes, quick-play games, and regression tests while preserving the existing multiplayer game engine.
 
 ## Required Render environment variable
 
