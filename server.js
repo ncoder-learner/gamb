@@ -62,7 +62,7 @@ app.post('/api/wallet/transfer',(req,res)=>{const a=accountFromToken(String(req.
 app.get('/api/shop',(req,res)=>res.json({ok:true,shop:SHOP}));
 app.post('/api/shop/buy',(req,res)=>{const a=accountFromToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));if(!a)return res.status(401).json({error:'Not signed in.'});const item=SHOP.find(x=>x.id===req.body?.id);if(!item)return res.status(404).json({error:'Item not found.'});if(a.inventory.includes(item.id))return res.status(400).json({error:'You already own this item.'});if(a.tokens<item.price)return res.status(400).json({error:'Not enough tokens.'});a.tokens-=item.price;a.inventory.push(item.id);saveAccounts();res.json({ok:true,account:accountResponse(a)})});
 app.post('/api/shop/equip',(req,res)=>{const a=accountFromToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));if(!a)return res.status(401).json({error:'Not signed in.'});const item=SHOP.find(x=>x.id===req.body?.id);if(!item||!a.inventory.includes(item.id))return res.status(400).json({error:'You do not own that item.'});a.equipped[item.slot]=item.id;saveAccounts();res.json({ok:true,account:accountResponse(a)})});
-app.post('/api/refill',(req,res)=>{const a=accountFromToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));if(!a)return res.status(401).json({error:'Not signed in.'});ensureAccount(a);const now=Date.now();const cooldown=24*60*60*1000;if(a.tokens>50)return res.status(400).json({error:'Refill is available when your vault is nearly empty.'});if(now-(a.refill.lastClaim||0)<cooldown){const left=cooldown-(now-(a.refill.lastClaim||0));return res.status(429).json({error:`Refill available in ${Math.ceil(left/3600000)} hours.`})}const amount=1000;a.tokens+=amount;a.refill.lastClaim=now;recordTransaction(a,amount,'token_refill',null,{reason:'empty_vault'});saveAccounts();res.json({ok:true,amount,account:accountResponse(a)});});
+app.post('/api/refill',(req,res)=>{const a=accountFromToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));if(!a)return res.status(401).json({error:'Not signed in.'});ensureAccount(a);const now=Date.now();const cooldown=24*60*60*1000;if(a.tokens>=1000)return res.status(400).json({error:'Refill is available when your vault is below 1,000 tokens.'});if(now-(a.refill.lastClaim||0)<cooldown){const left=cooldown-(now-(a.refill.lastClaim||0));return res.status(429).json({error:`Refill available in ${Math.ceil(left/3600000)} hours.`})}const amount=1000;a.tokens+=amount;a.refill.lastClaim=now;recordTransaction(a,amount,'token_refill',null,{reason:'empty_vault'});saveAccounts();res.json({ok:true,amount,account:accountResponse(a)});});
 app.post('/api/reward-ad',(req,res)=>{const a=accountFromToken(String(req.headers.authorization||'').replace(/^Bearer\s+/i,''));if(!a)return res.status(401).json({error:'Not signed in.'});return res.status(501).json({error:'Rewarded ads are not verified on this server yet. Configure a supported rewarded-ad callback before enabling token grants.'})});
 app.get('/health', (_req,res)=>res.json({ok:true,service:'game-hunk'}));
 const server = http.createServer(app);
@@ -197,8 +197,46 @@ function chessMove(room,p,move){const g=room.chess.game;if(!g)return {ok:false,e
 function botChessTick(room){const g=room.chess.game;if(!g)return;const id=g.turn()==='w'?room.chess.white:room.chess.black;const p=room.players.find(x=>x.id===id);if(!p?.bot||p._botPending||g.isGameOver())return;p._botPending=true;setTimeout(()=>{p._botPending=false;const moves=g.moves({verbose:true});if(!moves.length)return;const m=moves[crypto.randomInt(moves.length)];chessMove(room,p,{from:m.from,to:m.to,promotion:m.promotion||'q'})},800+crypto.randomInt(1000))}
 
 function addBot(room,type){if(!BOT_TYPES[type])return {ok:false,error:'Unknown bot personality.'};if(room.players.length>=MAX_PLAYERS)return {ok:false,error:'Room is full.'};const p=player({name:type,bot:true,botType:type});p.connected=true;room.players.push(p);say(room,`${type} joined the room as a bot.`);broadcast(room);return {ok:true}}
-function removePlayer(room,p){const wasHost=room.hostId===p.id;if(p.accountId&&accounts[p.accountId]){const a=ensureAccount(accounts[p.accountId]);const refund=Math.max(0,Math.floor(p.chips||0));if(refund){a.tokens+=refund;recordTransaction(a,refund,'table_return',room.game,{room:room.code});saveAccounts()}}room.players=room.players.filter(x=>x.id!==p.id);if(wasHost){const n=room.players.find(x=>x.connected||x.bot);room.hostId=n?.id||null;room.players.forEach(x=>x.host=x.id===room.hostId)}if(!room.players.length){clearTimer(room);rooms.delete(room.code);return}if(room.game==='poker'&&room.status==='IN_GAME'&&!p.folded){p.folded=true;room.poker.needsAction.delete(p.id);if(room.turnPlayerId===p.id)advancePoker(room)}say(room,`${p.name} left the room.`);broadcast(room)}
-
+function removePlayer(room,p){
+  const wasHost=room.hostId===p.id;
+  let refunded=0;
+  if(p.accountId&&accounts[p.accountId]){
+    const a=ensureAccount(accounts[p.accountId]);
+    let refund=Math.max(0,Math.floor(p.chips||0));
+    if(room.game==='poker' && room.poker.phase!=='HAND_COMPLETE' && p.totalBet>0){
+      const committed=Math.max(0,Math.floor(p.totalBet||0));
+      room.poker.pot=Math.max(0,room.poker.pot-committed);
+      refund+=committed; p.bet=0; p.totalBet=0;
+    }
+    const bh=room.blackjack?.hands?.[p.id];
+    if(room.game==='blackjack' && bh && room.blackjack.phase!=='RESULT'){
+      refund+=Math.max(0,Math.floor(bh.bet||0));
+      delete room.blackjack.hands[p.id];
+    }
+    if(room.game==='roulette' && room.roulette?.phase!=='RESULT'){
+      const remaining=(room.roulette.bets||[]).filter(b=>b.playerId===p.id);
+      refund+=remaining.reduce((sum,b)=>sum+Math.max(0,Math.floor(b.amount||0)),0);
+      room.roulette.bets=(room.roulette.bets||[]).filter(b=>b.playerId!==p.id);
+    }
+    if(refund>0){
+      a.tokens+=refund; refunded=refund;
+      recordTransaction(a,refund,'table_return',room.game,{room:room.code,reason:'leave_table'});
+      saveAccounts();
+    }
+  }
+  room.players=room.players.filter(x=>x.id!==p.id);
+  if(wasHost){
+    const n=room.players.find(x=>x.connected||x.bot);
+    room.hostId=n?.id||null; room.players.forEach(x=>x.host=x.id===room.hostId);
+  }
+  if(room.game==='poker'&&room.status==='IN_GAME'){
+    if(room.players.filter(x=>!x.folded&&x.chips+x.bet>0).length<=1) awardFold(room);
+    else if(room.turnPlayerId===p.id) advancePoker(room);
+  }
+  if(!room.players.length){clearTimer(room);rooms.delete(room.code);return;}
+  say(room,`${p.name} left the room${refunded?' and returned '+refunded.toLocaleString()+' tokens to the vault':''}.`);
+  broadcast(room);
+}
 io.on('connection',socket=>{
   socket.on('createRoom',({name,accountToken}={},ack)=>{const a=accountFromToken(String(accountToken||''));if(!a)return ack?.({ok:false,error:'Sign in before creating a room.'});const p=player({name:a.name,accountId:a.id,socketId:socket.id});p.chips=Math.min(1000,a.tokens);a.tokens-=p.chips;recordTransaction(a,-p.chips,'table_buyin','lobby',{room:'new'});saveAccounts();const room=newRoom(p);rooms.set(room.code,room);socket.join(room.code);socket.data.room=room.code;socket.data.player=p.id;say(room,`${p.name} created the room.`);broadcast(room);ack?.({ok:true,code:room.code,reconnectToken:p.reconnectToken})});
   socket.on('requestJoin',({code,accountToken}={},ack)=>{const a=accountFromToken(String(accountToken||''));const room=rooms.get(String(code||'').toUpperCase());if(!a||!room)return ack?.({ok:false,error:'Room not found.'});if(room.status!=='LOBBY'||room.players.length>=MAX_PLAYERS)return ack?.({ok:false,error:'That room is not accepting players.'});if(room.players.some(x=>x.accountId===a.id))return ack?.({ok:false,error:'You are already in this room.'});room.joinRequests=(room.joinRequests||[]).filter(x=>x.accountId!==a.id);room.joinRequests.push({id:uid('req'),accountId:a.id,name:a.name,at:Date.now()});const host=room.players.find(x=>x.id===room.hostId);if(host?.socketId)io.to(host.socketId).emit('joinRequest',{code:room.code,name:a.name});ack?.({ok:true})});
@@ -213,7 +251,7 @@ io.on('connection',socket=>{
   socket.on('blackjackBet',({amount}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?blackjackBet(room,p,amount):{ok:false,error:'Not in a room.'})});
   socket.on('blackjackAction',({action}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?bjAction(room,p,action):{ok:false,error:'Not in a room.'})});
   socket.on('rouletteBet',({type,value,amount}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?rouletteBet(room,p,type,value,amount):{ok:false,error:'Not in a room.'})});
-  socket.on('rouletteSpin',(_,ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can spin.'});rouletteSpin(room);ack?.({ok:true})});
+  socket.on('rouletteSpin',(_,ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p||room.hostId!==p.id)return ack?.({ok:false,error:'Only the host can spin.'});if(room.roulette.phase!=='BETTING')return ack?.({ok:false,error:'The roulette wheel is not ready.'});rouletteSpin(room);ack?.({ok:true})});
   socket.on('chessMove',({move}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);ack?.(room&&p?chessMove(room,p,move):{ok:false,error:'Not in a room.'})});
   socket.on('quickGame',({game,choice,amount,target}={},ack)=>{const a=accountFromToken(String(socket.handshake.auth?.accountToken||''));if(!a)return ack?.({ok:false,error:'Sign in first.'});const n=Math.floor(Number(amount));if(!Number.isFinite(n)||n<1||n>100000||n>a.tokens)return ack?.({ok:false,error:'Invalid token amount.'});let result,win=false,payout=0,meta={choice};if(game==='coinflip'){result=crypto.randomInt(2)===0?'heads':'tails';win=String(choice).toLowerCase()===result;payout=win?n*2:0}else if(game==='dice'){const t=Math.floor(Number(target));if(t<2||t>99)return ack?.({ok:false,error:'Target must be 2–99.'});result=crypto.randomInt(1,101);win=result>=t;payout=win?Math.max(n+1,Math.floor(n*100/(101-t))):0;meta.target=t}else if(game==='slots'){const symbols=['7','BAR','★','◆','●'];const reels=[0,0,0].map(()=>symbols[crypto.randomInt(symbols.length)]);result=reels.join(' | ');const counts={};reels.forEach(x=>counts[x]=(counts[x]||0)+1);const top=Math.max(...Object.values(counts));win=top>=2;payout=top===3?n*8:top===2?n*2:0;meta.reels=reels}else if(game==='higherlower'){const current=crypto.randomInt(1,14),next=crypto.randomInt(1,14);result={current,next};const dir=String(choice).toLowerCase();win=(dir==='higher'&&next>current)||(dir==='lower'&&next<current);payout=win?n*2:0;meta.current=current;meta.next=next}else return ack?.({ok:false,error:'Unknown quick game.'});a.tokens-=n;if(win)a.tokens+=payout;recordGame(a,game,win?payout-n:-n,win?'win':'loss',payout);saveAccounts();ack?.({ok:true,game,choice,result,win,payout,net:win?payout-n:-n,account:accountResponse(a)})});
   socket.on('chat',({text}={},ack)=>{const room=rooms.get(socket.data.room),p=room?.players.find(x=>x.id===socket.data.player);if(!room||!p)return ack?.({ok:false,error:'Not in a room.'});const t=cleanChat(text);if(!t)return ack?.({ok:false,error:'Empty message.'});room.chat.push({id:uid('m'),name:p.name,text:t,system:false,at:Date.now()});room.chat=room.chat.slice(-80);broadcast(room);ack?.({ok:true})});
