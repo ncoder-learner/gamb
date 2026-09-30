@@ -1,0 +1,56 @@
+name: Apply Game Hunk frontend behavior patch
+on:
+  push:
+    paths:
+      - '.github/workflows/patch-app.yml'
+permissions:
+  contents: write
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch app
+        shell: python
+        run: |
+          from pathlib import Path
+          p=Path('public/app.js')
+          s=p.read_text()
+          old="function renderAccount(){if($('#vaultTokens'))$('#vaultTokens').textContent=`${(account?.tokens||0).toLocaleString()} 🪙`}"
+          new="function renderAccount(){if($('#vaultTokens'))$('#vaultTokens').textContent=`${(account?.tokens||0).toLocaleString()} 🪙`;if($('#gameVault'))$('#gameVault').textContent=`Vault: ${(account?.tokens||0).toLocaleString()} 🪙`;}"
+          assert old in s
+          s=s.replace(old,new)
+          old="$('#adBtn').onclick=async()=>{try{await api('/api/reward-ad',{method:'POST',body:JSON.stringify({})});}catch(e){toast(e.message)}};"
+          new="$('#adBtn').onclick=async()=>{try{const j=await api('/api/refill',{method:'POST',body:'{}'});account=j.account;renderAccount();toast(`Refill: +${j.amount.toLocaleString()} tokens`)}catch(e){toast(e.message)}};"
+          assert old in s
+          s=s.replace(old,new)
+          old="$('#playAgainBtn').onclick=async()=>{const r=await call('playAgain',{});if(!r.ok)toast(r.error)};$('#quitGameBtn').onclick=leave;"
+          new="$('#playAgainBtn').onclick=async()=>{const r=await call('playAgain',{});if(!r.ok)toast(r.error)};$('#quitGameBtn').onclick=async()=>{const r=await call('returnToLobby',{});if(!r.ok)toast(r.error);};"
+          assert old in s
+          s=s.replace(old,new)
+          s += r'''
+
+async function quickGame(game){
+  if(!accountToken)return toast('Sign in to play.');
+  const names={coinflip:['COIN FLIP','Call heads or tails.'],dice:['DICE','Pick a target from 2–99.'],slots:['SLOTS','Three server-side reels.'],higherlower:['HIGHER / LOWER','Call the next card.']};
+  const meta=names[game]; if(!meta)return;
+  openModal(`<span class="eyebrow">${meta[0]}</span><h2>${meta[1]}</h2><p class="modal-sub">Virtual tokens only. Results are generated on the server.</p><label class="modal-label">BET</label><input id="quickBet" class="modal-input" type="number" min="1" max="100000" value="25"><div id="quickChoiceArea"></div><button class="btn primary full" id="quickPlay">PLAY ROUND</button><div id="quickResult"></div>`);
+  const area=$('#quickChoiceArea');
+  if(game==='coinflip')area.innerHTML='<label class="modal-label">SIDE</label><div class="game-tabs"><button class="game-tab active" data-qchoice="heads">HEADS</button><button class="game-tab" data-qchoice="tails">TAILS</button></div>';
+  else if(game==='higherlower')area.innerHTML='<label class="modal-label">CALL</label><div class="game-tabs"><button class="game-tab active" data-qchoice="higher">HIGHER</button><button class="game-tab" data-qchoice="lower">LOWER</button></div>';
+  else if(game==='dice')area.innerHTML='<label class="modal-label">TARGET</label><input id="quickTarget" class="modal-input" type="number" min="2" max="99" value="50">';
+  let choice=game==='coinflip'?'heads':game==='higherlower'?'higher':'';
+  area.querySelectorAll('[data-qchoice]').forEach(b=>b.onclick=()=>{choice=b.dataset.qchoice;area.querySelectorAll('[data-qchoice]').forEach(x=>x.classList.toggle('active',x===b))});
+  $('#quickPlay').onclick=async()=>{const amount=Math.floor(Number($('#quickBet').value));const target=game==='dice'?Math.floor(Number($('#quickTarget').value)):50;if(!Number.isFinite(amount)||amount<1)return toast('Enter a valid bet.');$('#quickPlay').disabled=true;const r=await call('quickGame',{game,choice,amount,target});if(!r.ok){$('#quickPlay').disabled=false;return toast(r.error||'Round failed.')}account=r.account;renderAccount();const result=typeof r.result==='object'?`Current ${r.result.current} → Next ${r.result.next}`:String(r.result);$('#quickResult').innerHTML=`<div class="quick-result ${r.win?'win':'loss'}"><b>${r.win?'YOU WIN':'ROUND OVER'}</b><span>${result}</span><strong>${r.net>=0?'+':''}${r.net.toLocaleString()} 🪙</strong></div><button class="btn full" id="quickAgain">PLAY AGAIN</button>`;$('#quickAgain').onclick=()=>quickGame(game)};
+}
+'''
+          p.write_text(s)
+      - run: node --check public/app.js
+      - name: Commit patch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/app.js
+          git rm .github/workflows/patch-app.yml
+          git commit -m 'Polish quick games refill and lobby navigation'
+          git push
