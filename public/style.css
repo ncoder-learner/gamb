@@ -58,3 +58,10 @@
 .poker-guide{margin-top:14px!important;padding-top:12px!important;max-height:none!important;overflow:visible!important}.guide-note{font-size:9px!important;color:#727b72!important;margin:5px 0 7px!important}.hand-guide{display:grid!important;grid-template-columns:1fr!important;gap:3px!important}.hand-guide>div{padding:5px 7px!important;min-height:0!important}.hand-guide b{font-size:9px!important}.hand-guide span{font-size:7px!important;margin-top:1px!important}.hand-guide>div.current{border-color:#d7aa55!important;background:linear-gradient(90deg,#2b210d,#14150f)!important}
 @media(max-width:1050px){.poker-board{height:auto!important;min-height:690px!important}.table-felt{width:88%!important}.community .card{width:52px!important;height:72px!important;font-size:20px!important}.my-hand .card{width:60px!important;height:82px!important;font-size:23px!important}.seat{min-width:125px!important}}
 @media(max-width:760px){.game-layout{grid-template-columns:1fr!important}.side{min-height:auto!important}.poker-guide{display:none!important}.poker-board{min-height:650px!important}.table-felt{width:96%!important}.seat{min-width:105px!important}.seat-panel{padding:6px!important}.seat .hole{min-height:36px!important}.seat .mini-back{width:23px!important;height:34px!important}.community{gap:4px!important}.community .card{width:43px!important;height:60px!important;font-size:17px!important}.my-hand .card{width:53px!important;height:74px!important;font-size:20px!important}.showdown{top:68%!important}.showdown-player{padding:2px 4px!important}}
+
+/* Player perspective: cards stay inside the felt and remain visible */
+.hero-hand{bottom:4%!important}
+.my-hand .card{position:relative!important;z-index:1!important}
+.my-hand .card:first-child{transform:rotate(-5deg) translateY(4px)!important}
+.my-hand .card:last-child{transform:rotate(5deg) translateY(4px)!important}
+.my-hand.your-turn .card:first-child{transform:rotate(-5deg) translateY(-2px)!important}.my-hand.your-turn .card:last-child{transform:rotate(5deg) translateY(-2px)!important}
