@@ -98,7 +98,9 @@ function renderPoker(){
  }
  const turnName=players.find(x=>x.id===state.turnPlayerId)?.name;
  if($('#turnBadge'))$('#turnBadge').textContent=myTurn?'YOUR TURN':turnName?turnName+'\'S TURN':phase==='HAND_COMPLETE'?'SHOWDOWN':phase;
+ if(phase==='HAND_COMPLETE'&&$('#playAgainBtn'))$('#playAgainBtn').textContent='NEXT HAND · '+Math.max(0,Math.ceil(((state.turnEndsAt||0)-Date.now())/1000))+'s';
  if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
+ const strength=$('#myHandStrength');if(strength){const label=state.me?.currentHand||'—';strength.textContent=phase==='HAND_COMPLETE'?'SHOWDOWN · '+label:label;strength.classList.toggle('live',!!state.me?.currentHand);strength.classList.toggle('turn',myTurn);}
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
  if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
