@@ -102,7 +102,7 @@ function renderPoker(){
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
  if($('#callBtn'))$('#callBtn').textContent=toCall?'CALL '+toCall:'CHECK';
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
- if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE}
+ if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE'}
  const guide=$('#handGuide');
  if(guide){const current=state.me?.currentHand;$$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
  const fa=$('#feltAction');
