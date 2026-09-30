@@ -45,32 +45,88 @@ function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');
 function seatPos(i,n){const a=(-90+(360/n)*i)*Math.PI/180;return {left:50+43*Math.cos(a),top:50+43*Math.sin(a)}}
 function renderPoker(){
  const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
- const phase=p.phase||'WAITING', showdown=new Map((p.showdown||[]).map(x=>[x.id,x]));
- const street={LOBBY:'WAITING',PREFLOP:'PRE-FLOP',FLOP:'FLOP',TURN:'TURN',RIVER:'RIVER',HAND_COMPLETE:'SHOWDOWN'}[phase]||phase;
- $('#pot').innerHTML='<span>POT</span><b>'+(p.pot||0).toLocaleString()+'</b><small>'+esc(street)+'</small>';
- $('#community').innerHTML=(p.community||[]).map(card).join('');
- const dealer=players[p.dealerIndex]; if($('#dealerName'))$('#dealerName').textContent=dealer?.name||'—';
- $('#seats').innerHTML=players.map((x,i)=>{
-   const pos=seatPos(i,Math.max(2,players.length)), mineSeat=x.id===mine?.id, revealed=showdown.has(x.id)&&phase==='HAND_COMPLETE';
+ const phase=p.phase||'WAITING';
+ const showdown=new Map((p.showdown||[]).map(x=>[x.id,x]));
+ const street={LOBBY:'WAITING',PREFLOP:'PRE-FLOP',FLOP:'FLOP',TURN:'TURN',RIVER:'RIVER',SHOWDOWN:'SHOWDOWN',HAND_COMPLETE:'SHOWDOWN'}[phase]||phase;
+ const pot=$('#pot'), streetChip=$('#streetChip'), dealerName=$('#dealerName');
+ if(pot)pot.innerHTML='<span>POT</span><b>'+Number(p.pot||0).toLocaleString()+'</b>';
+ if(streetChip)streetChip.textContent=street;
+ const dealer=players[p.dealerIndex];
+ if(dealerName)dealerName.textContent=dealer?.name||'—';
+ const community=$('#community');
+ if(community)community.innerHTML=(p.community||[]).map((c,i)=>card(c).replace('class="card','class="card deal-card deal-'+i)).join('');
+ const seats=$('#seats');
+ if(seats)seats.innerHTML=players.map((x,i)=>{
+   const pos=seatPos(i,Math.max(2,players.length));
+   const mineSeat=x.id===mine?.id;
+   const revealed=phase==='HAND_COMPLETE'&&showdown.has(x.id);
    let hole='';
    if(mineSeat&&state.me?.hole?.length) hole=state.me.hole.map(card).join('');
    else if(revealed) hole=(showdown.get(x.id)?.cards||[]).map(card).join('');
    else hole='<div class="card back mini-back">?</div><div class="card back mini-back">?</div>';
    const active=state.turnPlayerId===x.id;
    const action=x.lastAction||'';
-   return '<div class="seat '+(x.folded?'folded ':'')+(active?'active ':'')+(mineSeat?'mine ':'')+'" style="left:'+pos.left+'%;top:'+pos.top+'%;transform:translate(-50%,-50%)">'+
-    '<div class="seat-avatar"><span>'+(x.bot?'DEALER':'PLAYER')+'</span></div><div class="seat-panel"><div class="seat-name">'+esc(x.name)+(x.host?' ♛':'')+'</div><div class="hole">'+hole+'</div><div class="seat-chips">'+x.chips.toLocaleString()+' <span>CHIPS</span></div><div class="seat-bet">'+(x.bet?'BET '+x.bet.toLocaleString():'')+'</div><div class="seat-action">'+esc(action)+(active?' • YOUR TURN':'')+'</div></div></div>';
+   const hand=revealed?showdown.get(x.id)?.hand:'';
+   return '<div class="seat '+(mineSeat?'mine ':'')+(active?'active ':'')+(x.folded?'folded ':'')+'" style="left:'+pos.left+'%;top:'+pos.top+'%">'+
+     '<div class="opponent-figure"><i></i><span></span></div>'+
+     '<div class="seat-panel"><div class="seat-name">'+esc(x.name)+(x.host?' ♛':'')+'</div>'+
+     '<div class="seat-role">'+(x.bot?'DEALER':'PLAYER')+'</div><div class="hole">'+hole+'</div>'+
+     '<div class="seat-chips"><b>'+Number(x.chips||0).toLocaleString()+'</b><span>CHIPS</span></div>'+
+     '<div class="seat-bet">'+(x.bet?'BET '+Number(x.bet).toLocaleString():'')+'</div>'+
+     '<div class="seat-action">'+esc(action)+(active?' • YOUR TURN':'')+'</div>'+
+     (hand?'<div class="revealed-hand">'+esc(hand)+'</div>':'')+
+     '</div></div>';
  }).join('');
- const winnerText=(p.winners||[]).map(w=>{const pl=players.find(x=>x.id===w.id);return '<div class="winner-card"><strong>'+esc(pl?.name||'Player')+' WINS</strong><b>+'+w.amount.toLocaleString()+' CHIPS</b><span>'+esc(w.hand||'Winner')+'</span></div>'}).join('');
- $('#winner').innerHTML=winnerText;
- $('#showdown').innerHTML=phase==='HAND_COMPLETE'&&p.showdown?.length?'<div class="showdown-title">SHOWDOWN</div>'+p.showdown.map(x=>'<div class="showdown-player"><b>'+esc(x.name)+'</b><div class="showdown-cards">'+x.cards.map(card).join('')+'</div><span>'+esc(x.folded?'FOLDED':'SHOWED')+'</span></div>').join(''):'';
- if(phase==='HAND_COMPLETE')$('#postGame').classList.remove('hidden');
- const turnName=players.find(x=>x.id===state.turnPlayerId)?.name; $('#turnBadge').textContent=myTurn?'YOUR TURN':turnName?esc(turnName)+'\'S TURN':phase==='HAND_COMPLETE'?'SHOWDOWN':phase;
- $('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
- const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0)); $('#callBtn').textContent=toCall?'CALL '+toCall:'CHECK';
- $$('[data-action]').forEach(btn=>btn.disabled=!myTurn); $('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1); $('#raiseAmount').disabled=!myTurn;
- const guide=$('#handGuide'); if(guide){const current=state.me?.currentHand;$$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
- const fa=$('#feltAction'); if(fa){const active=players.find(x=>x.id===state.turnPlayerId);fa.textContent=active?(active.id===mine?.id?'YOUR TURN':active.name+' IS PLAYING'):(phase==='HAND_COMPLETE'?'SHOWDOWN':'')}
+ const winner=$('#winner');
+ if(winner)winner.innerHTML=(p.winners||[]).map(w=>{
+   const pl=players.find(x=>x.id===w.id);
+   return '<div class="winner-card"><strong>'+esc(pl?.name||'Player')+' WINS</strong><b>+'+Number(w.amount||0).toLocaleString()+'</b><span>'+esc(w.hand||'Winner')+'</span></div>';
+ }).join('');
+ const showdownEl=$('#showdown');
+ if(showdownEl){
+   showdownEl.innerHTML=phase==='HAND_COMPLETE'&&p.showdown?.length?
+     '<div class="showdown-title">SHOWDOWN · CARDS REVEALED</div>'+
+     p.showdown.map(x=>'<div class="showdown-player"><b>'+esc(x.name)+'</b><div class="showdown-cards">'+x.cards.map(card).join('')+'</div><span>'+esc(x.folded?'FOLDED':'SHOWED')+'</span></div>').join('')
+     :'';
+   showdownEl.classList.toggle('visible',phase==='HAND_COMPLETE');
+ }
+ const post=$('#postGame'); if(post)post.classList.toggle('hidden',phase!=='HAND_COMPLETE');
+ const myHand=$('#myHand');
+ if(myHand){
+   myHand.innerHTML=(state.me?.hole||[]).map(card).join('');
+   myHand.classList.toggle('your-turn',myTurn);
+ }
+ const turnName=players.find(x=>x.id===state.turnPlayerId)?.name;
+ if($('#turnBadge'))$('#turnBadge').textContent=myTurn?'YOUR TURN':turnName?turnName+'\'S TURN':phase==='HAND_COMPLETE'?'SHOWDOWN':phase;
+ if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
+ const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
+ if($('#callBtn'))$('#callBtn').textContent=toCall?'CALL '+toCall:'CHECK';
+ $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
+ if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE}
+ const guide=$('#handGuide');
+ if(guide){const current=state.me?.currentHand;$$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
+ const fa=$('#feltAction');
+ if(fa){const active=players.find(x=>x.id===state.turnPlayerId);fa.textContent=active?(active.id===mine?.id?'YOUR TURN':active.name+' IS PLAYING'):(phase==='HAND_COMPLETE'?'SHOWDOWN':'')}
+ if(window.ghPokerFX?.lastHand!==p.handNo){window.ghPokerFX={lastHand:p.handNo};}
+ const previous=window.ghPokerFX.players||{};
+ players.forEach(x=>{
+   const key=x.id, now=x.lastAction||'';
+   if(now&&now!==previous[key])showPokerActionFX(x,now);
+ });
+ window.ghPokerFX.players=Object.fromEntries(players.map(x=>[x.id,x.lastAction||'']));
+}
+function showPokerActionFX(player,action){
+ const stage=$('.poker-stage'); if(!stage)return;
+ const pos=seatPos(player.seat||0,Math.max(2,state.players.length));
+ const el=document.createElement('div');
+ el.className='action-fx '+(action==='FOLD'?'fold':'');
+ el.style.left=pos.left+'%';el.style.top=pos.top+'%';
+ el.innerHTML='<b>'+esc(action.replace('ALL-IN','ALL IN'))+'</b><span>'+(action==='CALL'||action==='RAISE'||action==='ALL-IN'?'CHIPS FORWARD':'')+'</span>';
+ stage.appendChild(el);
+ setTimeout(()=>el.remove(),1300);
+ if(['CALL','RAISE','ALL-IN'].includes(action)){
+   const chips=document.createElement('div');chips.className='flying-chips';chips.style.left=pos.left+'%';chips.style.top=pos.top+'%';stage.appendChild(chips);setTimeout(()=>chips.remove(),850);
+ }
 }
 function renderBJ(){const b=state.blackjack||{},mine=mePlayer();$('#dealerCards').innerHTML=(b.dealer||[]).map(card).join('');$('#bjHands').innerHTML=state.players.map(p=>{const h=b.hands?.[p.id];if(!h||!h.bet)return `<div class="bj-hand"><b>${esc(p.name)}</b><div class="muted">No bet</div></div>`;return `<div class="bj-hand ${state.turnPlayerId===p.id?'bj-active':''}"><b>${esc(p.name)} ${p.bot?'🤖':''}</b><div class="cards">${h.cards.map(card).join('')}</div><div>${h.total} · bet ${h.bet}</div><div class="eyebrow">${esc(h.result||(!h.done?'PLAYING':''))}</div></div>`}).join('');const myTurn=state.turnPlayerId===mine?.id;$$('[data-bj]').forEach(b=>b.disabled=!myTurn);$('#bjBetBtn').disabled=b.phase!=='BETTING'||!mine}
 function renderRoulette(){const r=state.roulette||{};$('#rouletteResult').textContent=r.result?`RESULT: ${r.result}`:r.phase==='SPINNING'?'SPINNING…':'PLACE YOUR BETS';$('#wheel').classList.toggle('spinning',r.phase==='SPINNING');const mine=mePlayer();$('#spinBtn').disabled=!mine?.host||r.phase!=='BETTING';}
