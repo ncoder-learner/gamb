@@ -45,8 +45,11 @@ function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');
 function seatPos(i,n){const a=(-90+(360/n)*i)*Math.PI/180;return {left:50+43*Math.cos(a),top:50+43*Math.sin(a)}}
 function renderPoker(){
  const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
+ $('#pokerGuide').classList.toggle('hidden',true);
+ const guide=$('#handGuide'); if(guide){const current=state.me?.currentHand;$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current));$('#pokerGuide').classList.remove('hidden')}
  const phase=p.phase||'WAITING', showdown=new Map((p.showdown||[]).map(x=>[x.id,x]));
- $('#pot').innerHTML='POT <b>'+(p.pot||0).toLocaleString()+'</b><span class="street-label">'+esc(phase.replace('_',' '))+'</span>';
+ const street={LOBBY:'WAITING',PREFLOP:'PRE-FLOP • 0 COMMUNITY',FLOP:'FLOP • 3 COMMUNITY',TURN:'TURN • 4 COMMUNITY',RIVER:'RIVER • 5 COMMUNITY',HAND_COMPLETE:'HAND COMPLETE'}[phase]||phase;
+ $('#pot').innerHTML='POT <b>'+(p.pot||0).toLocaleString()+'</b><span class="street-label">'+esc(street)+'</span>';
  $('#community').innerHTML=(p.community||[]).map(card).join('');
  const dealer=players[p.dealerIndex]; if($('#dealerName'))$('#dealerName').textContent=dealer?.name||'—';
  $('#seats').innerHTML=players.map((x,i)=>{
@@ -66,7 +69,7 @@ function renderPoker(){
      '</div>'+
    '</div>';
  }).join('');
- $('#winner').innerHTML=(p.winners||[]).map(w=>{const pl=players.find(x=>x.id===w.id);return '<div class="winner-line"><b>'+esc(pl?.name||'Player')+'</b><span>+'+w.amount.toLocaleString()+' chips</span><small>'+esc(w.hand||'Winner')+'</small></div>'}).join('');
+ $('#winner').innerHTML=(p.winners||[]).map(w=>{const pl=players.find(x=>x.id===w.id);return '<div class="winner-line"><b>'+esc(pl?.name||'Player')+'</b><span>+'+w.amount.toLocaleString()+' chips</span><small>WINNING HAND: '+esc(w.hand||'Winner')+'</small></div>'}).join('');
  $('#showdown').innerHTML=phase==='HAND_COMPLETE'&&p.showdown?.length?'<div class="showdown-title">SHOWDOWN</div>'+p.showdown.map(x=>'<span><b>'+esc(x.name)+'</b> · '+(x.folded?'FOLDED':'SHOWED')+' · '+x.cards.map(esc).join(' ')+'</span>').join(''):'';
  if(phase==='HAND_COMPLETE')$('#postGame').classList.remove('hidden');
  const turnName=players.find(x=>x.id===state.turnPlayerId)?.name;
