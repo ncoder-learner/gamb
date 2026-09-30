@@ -42,7 +42,7 @@ function renderPlayers(){
 function renderChat(){const html=(state.chat||[]).map(m=>`<div class="chat-line ${m.system?'system':''}">${m.system?'':`<b>${esc(m.name)}:</b>`}${esc(m.text)}</div>`).join('');$('#chatLog').innerHTML=html;$('#gameChat').innerHTML=html;['#chatLog','#gameChat'].forEach(s=>{const x=$(s);x.scrollTop=x.scrollHeight})}
 function card(c){if(c==='??')return '<div class="card back">?</div>';return `<div class="card ${/[♥♦]/.test(c)?'red':''}">${esc(c)}</div>`}
 function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');$('#pokerBoard').classList.toggle('hidden',g!=='poker');$('#blackjackBoard').classList.toggle('hidden',g!=='blackjack');$('#rouletteBoard').classList.toggle('hidden',g!=='roulette');$('#chessBoard').classList.toggle('hidden',g!=='chess');$('#pokerActions').classList.toggle('hidden',g!=='poker');$('#bjActions').classList.toggle('hidden',g!=='blackjack');if(g==='poker')renderPoker();if(g==='blackjack')renderBJ();if(g==='roulette')renderRoulette();if(g==='chess')renderChess()}
-function seatPos(i,n){const a=(-90+(360/n)*i)*Math.PI/180;return {left:50+43*Math.cos(a),top:50+43*Math.sin(a)}}
+function seatPos(i,n,focus=0){const a=(90+(360/n)*(i-focus))*Math.PI/180;return {left:50+42*Math.cos(a),top:50+38*Math.sin(a)}}
 function renderPoker(){
  const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
  const phase=p.phase||'WAITING';
@@ -57,7 +57,7 @@ function renderPoker(){
  if(community)community.innerHTML=(p.community||[]).map((c,i)=>card(c).replace('class="card','class="card deal-card deal-'+i)).join('');
  const seats=$('#seats');
  if(seats)seats.innerHTML=players.map((x,i)=>{
-   const pos=seatPos(i,Math.max(2,players.length));
+   const mineIndex=players.findIndex(v=>v.id===mine?.id); const pos=seatPos(i,Math.max(2,players.length),mineIndex<0?0:mineIndex);
    const mineSeat=x.id===mine?.id;
    const revealed=phase==='HAND_COMPLETE'&&showdown.has(x.id);
    let hole='';
@@ -117,7 +117,7 @@ function renderPoker(){
 }
 function showPokerActionFX(player,action){
  const stage=$('.poker-stage'); if(!stage)return;
- const pos=seatPos(player.seat||0,Math.max(2,state.players.length));
+ const mineIndex=state.players.findIndex(v=>v.id===state.me?.id); const pos=seatPos(player.seat||0,Math.max(2,state.players.length),mineIndex<0?0:mineIndex);
  const el=document.createElement('div');
  el.className='action-fx '+(action==='FOLD'?'fold':'');
  el.style.left=pos.left+'%';el.style.top=pos.top+'%';
