@@ -11,7 +11,7 @@ function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');cl
 function showScreen(id){$$('.screen').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active')}
 function openModal(html){$('#modalContent').innerHTML=html;$('#modal').classList.remove('hidden')}
 function closeModal(){$('#modal').classList.add('hidden')}
-function call(event,payload){return new Promise(resolve=>socket.emit(event,payload||{},r=>resolve(r||{})))}
+function call(event,payload){return new Promise(resolve=>{let done=false;const finish=r=>{if(done)return;done=true;clearTimeout(timer);resolve(r||{})};const timer=setTimeout(()=>finish({ok:false,error:'The server did not respond. Check your connection and try again.'}),8000);try{socket.emit(event,payload||{},finish)}catch(e){finish({ok:false,error:e.message||'Connection failed.'})}})}
 async function api(path,opts={}){const headers={'Content-Type':'application/json',...(opts.headers||{})};if(accountToken)headers.Authorization='Bearer '+accountToken;const r=await fetch(API_URL+path,{...opts,headers});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'Request failed');return j}
 async function loadAccount(){if(!accountToken){renderAuth();return}try{const j=await api('/api/me');account=j.account;renderAccount();showScreen(state?'lobby':'home')}catch{localStorage.removeItem('gh_account_token');accountToken='';renderAuth()}}
 function renderAccount(){if($('#vaultTokens'))$('#vaultTokens').textContent=`${(account?.tokens||0).toLocaleString()} 🪙`}
