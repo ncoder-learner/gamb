@@ -65,3 +65,23 @@
 .my-hand .card:first-child{transform:rotate(-5deg) translateY(4px)!important}
 .my-hand .card:last-child{transform:rotate(5deg) translateY(4px)!important}
 .my-hand.your-turn .card:first-child{transform:rotate(-5deg) translateY(-2px)!important}.my-hand.your-turn .card:last-child{transform:rotate(5deg) translateY(-2px)!important}
+
+/* === CLEAN POKER CONTROLS === */
+.game-main{min-width:0!important}
+#pokerActions{position:relative!important;z-index:50!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:14px!important;margin:12px auto 0!important;padding:10px 14px!important;width:min(900px,100%)!important;background:rgba(12,15,12,.96)!important;border:1px solid #2d352e!important;border-radius:12px!important;box-shadow:0 8px 25px #0007!important}
+#pokerActions.hidden{display:none!important}
+#pokerActions .turn-badge{min-width:100px!important;text-align:center!important;font-size:10px!important}
+#pokerActions .timer{min-width:34px!important;text-align:center!important;color:#aab4aa!important;font-weight:800!important}
+#pokerActions .actions{display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;flex-wrap:nowrap!important;margin-left:0!important}
+#pokerActions .actions .btn{min-width:82px!important;height:38px!important}
+#pokerActions #raiseAmount{width:105px!important;height:38px!important;background:#080b08!important;border:1px solid #394139!important;color:#fff!important;border-radius:8px!important;padding:0 9px!important}
+#pokerActions .btn:disabled{opacity:.38!important;cursor:not-allowed!important;transform:none!important}
+.poker-guide{display:block!important;max-height:none!important;overflow:visible!important;margin:10px 0 0!important;padding:12px!important;border-top:1px solid #2b322b!important}
+.poker-guide.hidden{display:block!important}
+.hand-guide{display:flex!important;flex-direction:column!important;gap:3px!important}
+.hand-guide>div{display:grid!important;grid-template-columns:105px 1fr!important;align-items:center!important;gap:6px!important;padding:5px 6px!important;border:1px solid transparent!important;border-radius:6px!important;background:#0b0f0b!important}
+.hand-guide b{font-size:9px!important;line-height:1!important;color:#dfe5df!important}
+.hand-guide span{font-size:7px!important;line-height:1.2!important;color:#7f897f!important}
+.hand-guide>div.current{background:#201a0d!important;border-color:#c99d4e!important;box-shadow:inset 3px 0 #d8ad59!important}
+.hand-guide>div.current b{color:#f1d27f!important}
+@media(max-width:850px){#pokerActions{flex-direction:column;gap:7px}.poker-board{min-height:620px!important}.table-felt{width:94%!important}.seat{min-width:100px!important}.seat-panel{padding:5px!important}.seat-name{font-size:9px!important}.seat .card{width:25px!important;height:36px!important;font-size:11px!important}.my-hand .card{width:52px!important;height:72px!important;font-size:20px!important}}
