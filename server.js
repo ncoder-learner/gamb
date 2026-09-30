@@ -8,7 +8,7 @@ const { Chess } = require('chess.js');
 
 const app = express();
 app.use(express.json({limit:'32kb'}));
-const CLIENT_ORIGIN = (process.env.CLIENT_ORIGIN || 'https://gamehunk.netlify.app').split(',').map(x=>x.trim()).filter(Boolean);
+const CLIENT_ORIGIN = (process.env.CLIENT_ORIGIN || 'https://gamb-mu.vercel.app,https://gamehunk.netlify.app').split(',').map(x=>x.trim()).filter(Boolean);
 app.use((req,res,next)=>{
   const origin = req.headers.origin;
   if (origin && CLIENT_ORIGIN.includes(origin)) {
