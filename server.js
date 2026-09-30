@@ -159,7 +159,7 @@ function pokerAction(room,p,action,amount){
   if(action==='fold'){p.folded=true;p.action=p.lastAction='FOLD';room.poker.needsAction.delete(p.id)}
   else if(action==='check'){if(call!==0)return {ok:false,error:`You need ${call} more to call.`};p.action=p.lastAction='CHECK';room.poker.needsAction.delete(p.id)}
   else if(action==='call'){if(call===0)return {ok:false,error:'You can check instead.'};put(room,p,call);p.action=p.lastAction='CALL';room.poker.needsAction.delete(p.id)}
-  else if(action==='allin'){const before=room.poker.highestBet;const oldBet=p.bet;put(room,p,p.chips);p.action=p.lastAction='ALL-IN';room.poker.needsAction.delete(p.id);if(p.bet>before){room.poker.highestBet=p.bet;room.poker.minRaise=Math.max(BIG_BLIND,p.bet-before);raised=true}}
+  else if(action==='allin'){const before=room.poker.highestBet;const minTo=before+room.poker.minRaise;put(room,p,p.chips);p.action=p.lastAction='ALL-IN';room.poker.needsAction.delete(p.id);if(p.bet>=minTo){const raiseBy=p.bet-before;room.poker.highestBet=p.bet;room.poker.minRaise=Math.max(BIG_BLIND,raiseBy);raised=true}}
   else if(action==='raise'){const to=Number(amount);const minTo=room.poker.highestBet+room.poker.minRaise;const maxTo=p.bet+p.chips;if(!Number.isFinite(to)||to<minTo)return {ok:false,error:`Minimum raise-to is ${minTo}.`};if(to>maxTo)return {ok:false,error:`You only have ${maxTo} available.`};const old=room.poker.highestBet;put(room,p,to-p.bet);room.poker.highestBet=to;room.poker.minRaise=Math.max(BIG_BLIND,to-old);p.action=p.lastAction='RAISE';raised=true;room.poker.needsAction=new Set(actors(room).filter(x=>x.id!==p.id).map(x=>x.id))}
   else return {ok:false,error:'Unknown poker action.'};
   if(activeCount(room)<=1){awardFold(room);return {ok:true}}
