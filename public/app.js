@@ -100,11 +100,11 @@ function renderPoker(){
  if($('#turnBadge'))$('#turnBadge').textContent=myTurn?'YOUR TURN':turnName?turnName+'\'S TURN':phase==='HAND_COMPLETE'?'SHOWDOWN':phase;
  if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
- if($('#callBtn'))$('#callBtn').textContent=toCall?'CALL '+toCall:'CHECK';
+ if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
  if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE'}
  const guide=$('#handGuide');
- if(guide){const current=state.me?.currentHand;$$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
+ if(guide){guide.classList.remove('hidden');const current=state.me?.currentHand;$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
  const fa=$('#feltAction');
  if(fa){const active=players.find(x=>x.id===state.turnPlayerId);fa.textContent=active?(active.id===mine?.id?'YOUR TURN':active.name+' IS PLAYING'):(phase==='HAND_COMPLETE'?'SHOWDOWN':'')}
  if(window.ghPokerFX?.lastHand!==p.handNo){window.ghPokerFX={lastHand:p.handNo};}
