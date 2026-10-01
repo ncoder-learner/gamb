@@ -44,8 +44,7 @@ function card(c){if(c==='??')return '<div class="card back">?</div>';return `<di
 function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');$('#pokerBoard').classList.toggle('hidden',g!=='poker');$('#blackjackBoard').classList.toggle('hidden',g!=='blackjack');$('#rouletteBoard').classList.toggle('hidden',g!=='roulette');$('#chessBoard').classList.toggle('hidden',g!=='chess');$('#pokerActions').classList.toggle('hidden',g!=='poker');$('#bjActions').classList.toggle('hidden',g!=='blackjack');if(g==='poker')renderPoker();if(g==='blackjack')renderBJ();if(g==='roulette')renderRoulette();if(g==='chess')renderChess()}
 function seatPos(i,n,focus=0){const a=(90+(360/n)*(i-focus))*Math.PI/180;return {left:50+42*Math.cos(a),top:50+38*Math.sin(a)}}
 function renderPoker(){
- const hero=$('.hero-hand'), actionbar=$('#pokerActions');if(hero&&actionbar&&!actionbar.contains(hero)){actionbar.prepend(hero);hero.classList.add('docked-hand')}
- const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
+  const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
  const phase=p.phase||'WAITING';
  const showdown=new Map((p.showdown||[]).map(x=>[x.id,x]));
  const street={LOBBY:'WAITING',PREFLOP:'PRE-FLOP',FLOP:'FLOP',TURN:'TURN',RIVER:'RIVER',SHOWDOWN:'SHOWDOWN',HAND_COMPLETE:'SHOWDOWN'}[phase]||phase;
@@ -101,7 +100,7 @@ function renderPoker(){
  if($('#turnBadge'))$('#turnBadge').textContent=myTurn?'YOUR TURN':turnName?turnName+'\'S TURN':phase==='HAND_COMPLETE'?'SHOWDOWN':phase;
  if(phase==='HAND_COMPLETE'&&$('#playAgainBtn'))$('#playAgainBtn').textContent='NEXT HAND · '+Math.max(0,Math.ceil(((state.turnEndsAt||0)-Date.now())/1000))+'s';
  if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
- const strength=$('#myHandStrength');if(strength){const label=state.me?.currentHand||'—';strength.textContent=phase==='HAND_COMPLETE'?'SHOWDOWN · '+label:label;strength.classList.toggle('live',!!state.me?.currentHand);strength.classList.toggle('turn',myTurn);}
+ const strength=$('#myHandStrength');if(strength)strength.textContent='';
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
  if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
