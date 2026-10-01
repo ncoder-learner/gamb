@@ -44,6 +44,7 @@ function card(c){if(c==='??')return '<div class="card back">?</div>';return `<di
 function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');$('#pokerBoard').classList.toggle('hidden',g!=='poker');$('#blackjackBoard').classList.toggle('hidden',g!=='blackjack');$('#rouletteBoard').classList.toggle('hidden',g!=='roulette');$('#chessBoard').classList.toggle('hidden',g!=='chess');$('#pokerActions').classList.toggle('hidden',g!=='poker');$('#bjActions').classList.toggle('hidden',g!=='blackjack');if(g==='poker')renderPoker();if(g==='blackjack')renderBJ();if(g==='roulette')renderRoulette();if(g==='chess')renderChess()}
 function seatPos(i,n,focus=0){const a=(90+(360/n)*(i-focus))*Math.PI/180;return {left:50+42*Math.cos(a),top:50+38*Math.sin(a)}}
 function renderPoker(){
+ const hero=$('.hero-hand'), actionbar=$('#pokerActions');if(hero&&actionbar&&!actionbar.contains(hero)){actionbar.prepend(hero);hero.classList.add('docked-hand')}
  const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
  const phase=p.phase||'WAITING';
  const showdown=new Map((p.showdown||[]).map(x=>[x.id,x]));
@@ -54,7 +55,7 @@ function renderPoker(){
  const dealer=players[p.dealerIndex];
  if(dealerName)dealerName.textContent=dealer?.name||'—';
  const community=$('#community');
- if(community)community.innerHTML=(p.community||[]).map((c,i)=>card(c).replace('class="card','class="card deal-card deal-'+i)).join('');
+ if(community)community.innerHTML=(p.community||[]).map((c,i)=>{const best=state.me?.bestCards?.includes(c);return card(c).replace('class="card','class="card deal-card deal-'+i+(best?' best-hand-card':''))}).join('');
  const seats=$('#seats');
  if(seats)seats.innerHTML=players.map((x,i)=>{
    const mineIndex=players.findIndex(v=>v.id===mine?.id); const pos=seatPos(i,Math.max(2,players.length),mineIndex<0?0:mineIndex);
@@ -93,7 +94,7 @@ function renderPoker(){
  const post=$('#postGame'); if(post)post.classList.toggle('hidden',phase!=='HAND_COMPLETE');
  const myHand=$('#myHand');
  if(myHand){
-   myHand.innerHTML=(state.me?.hole||[]).map(card).join('');
+   myHand.innerHTML=(state.me?.hole||[]).map(c=>card(c).replace('class="card','class="card '+(state.me?.bestCards?.includes(c)?'best-hand-card ':'')+'hero-card')).join('');
    myHand.classList.toggle('your-turn',myTurn);
  }
  const turnName=players.find(x=>x.id===state.turnPlayerId)?.name;
