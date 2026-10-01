@@ -107,9 +107,6 @@
 #pokerActions .docked-hand .my-hand-strength{font-size:9px!important;min-height:0!important;margin:0!important;white-space:nowrap!important}
 #pokerActions .docked-hand .my-hand{min-height:0!important;align-items:center!important;gap:3px!important}
 #pokerActions .docked-hand .my-hand .card{width:36px!important;height:50px!important;font-size:14px!important;transform:none!important;box-shadow:0 5px 10px #0009!important}
-#pokerActions .docked-hand .my-hand .card.best-hand-card{border-color:#f1cf72!important;box-shadow:0 0 0 2px #e1b95b,0 0 14px rgba(225,185,91,.35)!important;transform:translateY(-3px)!important}
-.best-hand-card{border-color:#f0c969!important;box-shadow:0 0 0 2px rgba(240,201,105,.75),0 0 20px rgba(240,201,105,.3),0 9px 18px #000b!important;position:relative!important}
-.community .best-hand-card{transform:translateY(-7px)!important;z-index:10!important}
 .hand-guide>div.current{position:relative!important;overflow:hidden!important}
 .hand-guide>div.current:after{content:'BEST';float:right;font-size:7px;letter-spacing:.14em;color:#ffe8a2;border:1px solid #cda554;border-radius:999px;padding:2px 5px;margin-top:-1px}
 @media(max-width:850px){#pokerActions .hero-hand.docked-hand{width:100%!important;justify-content:center!important;margin:0!important;order:-1!important}.actions{margin-left:0!important}}
