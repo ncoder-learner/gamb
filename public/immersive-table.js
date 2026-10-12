@@ -42,7 +42,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
   const camera = new THREE.PerspectiveCamera(51, 1, .1, 70);
-  camera.position.set(0, 2.2, 9.25);
+  camera.position.set(0, 3.0, 8.5);
   camera.lookAt(0, .15, -.85);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
@@ -104,16 +104,16 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     g.position.set(x,y,z);g.rotation.y=rot;chipsGroup.add(g);return g;
   }
 
-  function addChipMark(x,z,colorIndex){
+  function addChipMark(x,y,z,colorIndex){
     const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');
     ctx.clearRect(0,0,128,128);ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=5;ctx.beginPath();ctx.arc(64,64,47,0,Math.PI*2);ctx.stroke();
     ctx.fillStyle='#fffaf0';ctx.font='bold 39px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(['1','5','25','100','500','1K'][colorIndex%6],64,65);
     const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
-    const mark=new THREE.Mesh(new THREE.PlaneGeometry(.19,.19),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}));mark.rotation.x=-Math.PI/2;mark.position.set(x,.203,z);chipsGroup.add(mark);
+    const mark=new THREE.Mesh(new THREE.PlaneGeometry(.19,.19),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}));mark.rotation.x=-Math.PI/2;mark.position.set(x,y,z);chipsGroup.add(mark);
   }
 
   function chipStack(x,z,count,color){
-    for(let i=0;i<count;i++){makeChip(x,.17+i*.058,z,color,i*.12);if(i===count-1)addChipMark(x,z,color);}
+    for(let i=0;i<count;i++){makeChip(x,.17+i*.058,z,color,i*.12);if(i===count-1)addChipMark(x,.17+(count-1)*.058+.03,z,color);}
   }
   chipStack(-3.35,1.05,6,1);chipStack(-3.0,1.25,4,0);chipStack(3.2,-.65,5,2);chipStack(3.48,-.42,3,4);
   for(let i=0;i<5;i++)makeChip(-.35+i*.18,.17, -.45, i%5, i*.3);
@@ -315,7 +315,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const t=clock.getElapsedTime(), now=performance.now();
     fill.intensity=36+Math.sin(t*.6)*2;
     camera.position.x=Math.sin(t*.12)*.025;
-    camera.position.y=2.2+Math.sin(t*.17)*.008;
+    camera.position.y=3.0+Math.sin(t*.17)*.008;
     camera.lookAt(0,.15,-.85);
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
