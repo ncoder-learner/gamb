@@ -110,3 +110,70 @@
 .hand-guide>div.current{position:relative!important;overflow:hidden!important}
 .hand-guide>div.current:after{content:'BEST';float:right;font-size:7px;letter-spacing:.14em;color:#ffe8a2;border:1px solid #cda554;border-radius:999px;padding:2px 5px;margin-top:-1px}
 @media(max-width:850px){#pokerActions .hero-hand.docked-hand{width:100%!important;justify-content:center!important;margin:0!important;order:-1!important}.actions{margin-left:0!important}}
+
+
+/* === COMPACT PLAYER HAND + ROULETTE TABLE REDESIGN === */
+#pokerActions{flex-wrap:wrap!important;align-items:center!important;gap:10px!important}
+#pokerActions .hero-hand.docked-hand{flex:0 1 250px!important;min-width:220px!important;max-width:270px!important;min-height:0!important;box-sizing:border-box!important}
+#pokerActions .docked-hand .my-hand{flex:0 0 auto!important}
+#pokerActions .docked-hand .hero-hand-label{letter-spacing:.13em!important}
+#pokerActions .docked-hand .my-hand-strength{max-width:92px!important;white-space:normal!important;line-height:1.25!important;letter-spacing:.06em!important}
+#pokerActions .docked-hand .my-hand .card{width:32px!important;height:45px!important;font-size:13px!important;border-width:1px!important}
+#pokerActions .docked-hand .my-hand .card:first-child,#pokerActions .docked-hand .my-hand .card:last-child{transform:none!important}
+#pokerActions .actions{flex:1 1 390px!important;min-width:0!important;flex-wrap:wrap!important}
+#pokerActions .actions .btn{min-width:70px!important}
+@media(max-width:850px){#pokerActions .hero-hand.docked-hand{flex:1 1 100%!important;max-width:none!important;min-width:0!important;padding:8px 10px!important}.hero-hand.docked-hand .my-hand-strength{max-width:none!important}.hero-hand.docked-hand .my-hand .card{width:34px!important;height:47px!important}}
+.roulette-board{min-height:0!important;padding:18px!important}
+.roulette-wrap{min-height:0!important;gap:18px!important;align-items:stretch!important;justify-content:flex-start!important;width:100%!important;max-width:1100px!important;margin:0 auto!important}
+.roulette-heading{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:8px 4px 0}
+.roulette-heading h2{font:700 clamp(26px,4vw,38px) "Space Grotesk";margin:7px 0 5px;color:#f4f0e5}
+.roulette-heading p{margin:0;color:#858d83;font-size:12px;line-height:1.5}
+.roulette-phase{flex:0 0 auto;padding:9px 12px;border:1px solid #67522b;background:#211b10;color:#e6c36f;border-radius:999px;font-size:9px;font-weight:900;letter-spacing:.12em}
+.roulette-stage{display:grid;grid-template-columns:minmax(220px,340px) minmax(150px,1fr);align-items:center;justify-content:center;gap:24px;padding:10px 4px}
+.roulette-board .wheel{width:min(100%,330px);aspect-ratio:1;height:auto;justify-self:center;position:relative;overflow:visible;border:13px solid #191a16;box-shadow:0 0 0 3px #b58c48,0 0 0 7px #111,0 20px 50px #000c,inset 0 0 0 2px #f0d28c}
+.wheel-pockets{position:absolute;inset:0;border-radius:50%;pointer-events:none}
+.wheel-pocket{position:absolute;left:50%;top:50%;width:23px;height:24px;margin:-12px 0 0 -11.5px;display:grid;place-items:center;font-size:9px;font-weight:900;color:#fff;text-shadow:0 1px 2px #000;transform:rotate(calc(var(--pocket-index)*9.473684deg)) translateY(-125px) rotate(calc(var(--pocket-index)*-9.473684deg));}
+.wheel-pocket.green{color:#caffdc}.wheel-pocket.red{color:#ffe1df}.wheel-pocket.black{color:#e5e8e3}
+.wheel-center{position:relative;z-index:3;width:76px;height:76px;border-radius:50%;background:radial-gradient(circle at 35% 25%,#33372f,#10130f 68%);border:5px double #c6a15a;box-shadow:0 0 0 5px #151712,0 4px 18px #000b;font-size:20px}
+.wheel-pointer{position:absolute;z-index:8;top:-12px;left:50%;transform:translateX(-50%);width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:25px solid #f4d47c;filter:drop-shadow(0 2px 4px #000)}
+.roulette-board .wheel.spinning{animation:spin 3s cubic-bezier(.12,.72,.18,1)}
+.roulette-outcome{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;min-width:0;padding:22px;border:1px solid #2c352d;border-radius:18px;background:linear-gradient(145deg,#101610,#080b08);box-shadow:inset 0 1px #ffffff08}
+.roulette-outcome>span{color:#7c877b;font-size:9px;font-weight:900;letter-spacing:.2em}
+.roulette-number-display{display:grid;place-items:center;min-width:86px;min-height:96px;margin:14px 0 10px;padding:8px 20px;border:2px solid #6b784e;border-radius:13px;background:#12623e;color:#fff;font:900 48px "Space Grotesk";box-shadow:0 10px 25px #0008}
+.roulette-number-display.red{background:#a52c2a;border-color:#d05b52}.roulette-number-display.black{background:#111411;border-color:#535b52}.roulette-number-display.green{background:#12623e;border-color:#59a97c}
+.roulette-result{font-size:12px;font-weight:700;letter-spacing:0;color:#bfc8bd;line-height:1.5}
+.roulette-table-panel{padding:16px;border:1px solid #293129;border-radius:18px;background:linear-gradient(145deg,#0d110d,#080a08);box-shadow:0 15px 40px #0005}
+.roulette-bet-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}
+.roulette-bet-toolbar>div b,.roulette-bets-heading b{display:block;color:#e9ece4;font-size:13px}
+.roulette-bet-toolbar>div span{display:block;color:#778176;font-size:10px;margin-top:4px}
+.roulette-bet-toolbar label{display:flex;align-items:center;gap:8px;color:#9b9f94;font-size:8px;font-weight:900;letter-spacing:.12em}
+.roulette-board .roulette-amount,.roulette-board .number-bet input{width:100px;min-width:0;padding:10px 11px;background:#060806;border:1px solid #394238;border-radius:9px;color:#fff}
+.roulette-controls{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;max-width:none}
+.roulette-controls .bet-chip{border-radius:9px;min-height:48px;padding:8px 5px;background:#151a15;border-color:#303930;font-size:10px}
+.roulette-controls .bet-chip small{display:block;margin-top:4px;color:#899286;font-size:8px}
+.roulette-controls .red-bet{background:#60201f;border-color:#a5433e;color:#fff}
+.roulette-controls .black-bet{background:#080a08;border-color:#4a5149;color:#fff}
+.roulette-number-area{display:grid;grid-template-columns:repeat(13,minmax(0,1fr));gap:4px;margin-top:12px}
+.roulette-zero{grid-column:span 1;grid-row:span 1;min-height:34px;border:1px solid #2c9161;border-radius:5px;background:#11633f;color:#fff;font-size:11px;font-weight:900}
+.roulette-number-area .roulette-zero:first-child{grid-column:span 1}
+.roulette-grid{grid-column:1/-1;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));grid-template-rows:repeat(3,35px);gap:4px}
+.roulette-pocket{min-width:0;border:1px solid #ffffff20;border-radius:5px;color:#fff;font-size:10px;font-weight:900;box-shadow:inset 0 1px #ffffff16;transition:transform .12s,border-color .12s}
+.roulette-pocket:hover,.roulette-zero:hover{transform:translateY(-1px);border-color:#f3d17c}
+.roulette-pocket.red{background:#a52b29}.roulette-pocket.black{background:#151815}
+.roulette-number-area .number-bet{grid-column:1/-1;display:flex;justify-content:flex-end;gap:7px;margin-top:3px}
+.roulette-bets-panel{margin-top:16px;padding-top:13px;border-top:1px solid #242c24}
+.roulette-bets-heading{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.roulette-bets-heading>span{color:#8b9588;font-size:10px}
+.roulette-bets{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-top:10px;max-height:150px;overflow:auto}
+.roulette-bet-row{display:flex;align-items:center;gap:9px;min-width:0;padding:9px;border:1px solid #232a23;border-radius:9px;background:#090c09}
+.roulette-bet-dot{flex:0 0 9px;width:9px;height:9px;border-radius:50%;background:#6c7d62}
+.roulette-bet-dot.red{background:#c4423e}.roulette-bet-dot.black{background:#d9ddd4}.roulette-bet-dot.number{background:#d7b35f}.roulette-bet-dot.outside{background:#6cbf8e}
+.roulette-bet-row>div{flex:1;min-width:0}.roulette-bet-row b,.roulette-bet-row span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roulette-bet-row b{font-size:10px;color:#e5e8e0}.roulette-bet-row span{font-size:8px;color:#8b9588;margin-top:3px}
+.roulette-bet-row strong{font-size:10px;color:#e1c06e;white-space:nowrap}
+.roulette-empty{grid-column:1/-1;color:#737d72;font-size:10px;margin:3px 0}
+.roulette-actions{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:14px;padding-top:12px;border-top:1px solid #242c24}
+.roulette-actions>span{color:#727c70;font-size:9px;line-height:1.4}
+.roulette-actions .btn{min-width:160px}
+@media(max-width:800px){.roulette-stage{grid-template-columns:1fr;gap:12px}.roulette-board .wheel{width:min(72vw,290px)}.roulette-outcome{align-items:center;text-align:center;padding:15px}.roulette-number-display{min-height:68px;font-size:36px;margin:8px 0}.roulette-controls{grid-template-columns:repeat(3,minmax(0,1fr))}.roulette-bets{grid-template-columns:1fr}.roulette-number-area{grid-template-columns:repeat(13,minmax(0,1fr))}.roulette-grid{grid-template-rows:repeat(3,30px)}.roulette-pocket{font-size:9px}.roulette-actions{align-items:stretch;flex-direction:column}.roulette-actions .btn{width:100%}.roulette-heading{align-items:flex-start}.roulette-phase{font-size:8px}.roulette-bet-toolbar{align-items:flex-start;flex-direction:column}.roulette-bet-toolbar label{width:100%;justify-content:space-between}}
+@media(max-width:430px){.roulette-board{padding:8px!important}.roulette-table-panel{padding:9px}.roulette-number-area{gap:2px}.roulette-grid{gap:2px;grid-template-rows:repeat(3,27px)}.roulette-pocket{font-size:8px}.roulette-zero{font-size:9px}.roulette-bet-row{padding:7px}.roulette-bet-row strong{font-size:9px}.roulette-board .wheel{width:min(78vw,265px)}.wheel-pocket{transform:rotate(calc(var(--pocket-index)*9.473684deg)) translateY(-100px) rotate(calc(var(--pocket-index)*-9.473684deg));font-size:8px}}
