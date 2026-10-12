@@ -38,3 +38,16 @@ test('immersive labels depth-test against cards and real CC0 wood maps are confi
   assert.match(s,/wood_table_001/);
   assert.match(s,/wood_floor|floorMat/);
 });
+
+test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
+  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+  const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+  const css=fs.readFileSync(path.join(root,'public/style.css'),'utf8');
+  assert.match(app,/bj-hud-total/);
+  assert.match(app,/SUGGESTION · STAND/);
+  assert.match(app,/SUGGESTION · HIT/);
+  assert.match(app,/WAGER CONFIRMED/);
+  assert.match(app,/Bet placed · \$\{amount\.toLocaleString\(\)\} virtual tokens/);
+  assert.match(html,/id="bjHud"/);
+  assert.match(css,/\.bj-hud\{position:absolute;top:18px;left:18px/);
+});
