@@ -176,12 +176,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
   }
-  function addCard(label,x,z,rot=0,back=false){
+  function addCard(label,x,z,rot=0,back=false,animateDeal=false){
     const front=cardTexture(label||'?',back), side=mat('#e0d7c4',.48);
     // Keep the beveled card body and use a separate plane for the printed face.
     // ExtrudeGeometry's default UVs are world-unit based, which can crop a CanvasTexture.
     const card=new THREE.Group();
-    card.position.set(x,.22,z);card.rotation.set(-Math.PI/2+.18,rot,0);
+    card.position.set(x,.31,z);card.rotation.set(-Math.PI/2+.58,rot,0);
     const body=new THREE.Mesh(cardGeo,side);
     body.castShadow=true;body.receiveShadow=true;card.add(body);
     const face=new THREE.Mesh(
@@ -189,7 +189,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       new THREE.MeshBasicMaterial({map:front,side:THREE.DoubleSide,toneMapped:false})
     );
     face.position.z=.03;face.receiveShadow=true;card.add(face);
-    cardGroup.add(card);return card;
+    cardGroup.add(card);
+    if(animateDeal){
+      const targetPosition=card.position.clone(),targetRotation=card.rotation.clone();
+      card.position.set(0,.72,-2.35);card.rotation.set(-Math.PI/2+.95,0,0);
+      cardFlights.push({card,targetPosition,targetRotation,start:performance.now()+cardFlights.length*105,duration:360});
+    }
+    return card;
   }
   function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
   function labelSprite(text, color='#f4e7c2'){
@@ -250,8 +256,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         [l1,r1,l2,r2].forEach(o=>{o.castShadow=true;o.receiveShadow=true});
         seatArmRefs.set(i,{armL,armR,baseL:{y:armL.position.y,z:armL.position.z},baseR:{y:armR.position.y,z:armR.position.z}});
       }
-      const stack=el.querySelector('.seat-chips b')?.textContent;
-      if(stack){for(let k=0;k<3;k++)makeChip(x+(k-1)*.15,.18+k*.058,z+(z>0?-.6:.6),isMine?4:([0,1,2,3,4][i%5]));}
+      const stack=Number((el.querySelector('.seat-chips b')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
+      const stackCount=stack>0?Math.max(1,Math.min(7,Math.ceil(Math.log10(stack+1)*1.65))):0;
+      const stackColor=stack>=10000?4:stack>=2500?3:stack>=500?2:stack>=100?1:0;
+      if(stackCount)chipStack(x+(isMine?0:(x<0?-.42:.42)),z+(z>0?-.62:.62),stackCount,stackColor);
+      const bet=Number((el.querySelector('.seat-bet')?.textContent||'').replace(/[^0-9.-]/g,''))||0;
+      if(bet>0)chipStack(x,z+(z>0?-.96:.96),Math.max(1,Math.min(4,Math.ceil(Math.log10(bet+1)))),2);
     });
   }
 
@@ -299,7 +309,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const phaseEl=document.querySelector('#scenePhase');if(phaseEl)phaseEl.textContent=phase;
     const cards=gameType==='blackjack'
       ? [...getCards('#dealerCards'),...getCards('#bjHands .bj-hand .cards')]
-      : [...getCards('#community'),...getCards('#myHand'),...getCards('#seats .hole')];
+      : [...getCards('#community'),...getCards('#myHand'),...getCards('#seats .seat:not(.mine) .hole')];
     const seatNodes=[...document.querySelectorAll('#seats .seat')];
     const seatSig=seatNodes.map(e=>e.textContent).join('|');
     if(!firstActionSync){
@@ -322,21 +332,40 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const seatsChanged=force||seatSig!==lastSeatSig;lastSeatSig=seatSig;signature=sig;
     clearGroup(chipsGroup);rebuildSeats();
     clearGroup(cardGroup);
+    const nextCardKeys=new Set();
+    const placeCard=(key,label,x,z,rot=0,back=false)=>{
+      nextCardKeys.add(key);
+      return addCard(label,x,z,rot,back,!previousCardKeys.has(key));
+    };
     if(gameType==='poker'){
-      const community=getCards('#community');community.forEach((c,i)=>addCard(c.label,-1.24+i*.62,-.35,(i-2)*.018,c.back));
-      const mine=getCards('#myHand');mine.forEach((c,i)=>addCard(c.label,-.37+i*.66,1.35,(i-.5)*.08,c.back));
-      const seats=[...document.querySelectorAll('#seats .seat')];
+      const community=getCards('#community');
+      const communityStart=-(Math.max(community.length,5)-1)*.41;
+      community.forEach((c,i)=>placeCard('community:'+i+':'+c.label,c.label,communityStart+i*.82,-.35,(i-2)*.012,c.back));
+      const mine=getCards('#myHand');
+      mine.forEach((c,i)=>placeCard('hero:'+i+':'+c.label,c.label,(i-(mine.length-1)/2)*.88,1.28,(i-(mine.length-1)/2)*.045,c.back));
+      const seats=[...document.querySelectorAll('#seats .seat:not(.mine)')];
       seats.forEach((el,i)=>{
-        const n=Math.max(1,seats.length),mineIndex=Math.max(0,seats.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2,x=Math.sin(a)*3.15,z=Math.cos(a)*1.65;
-        getCards('#seats .seat:nth-child('+(i+1)+') .hole').forEach((c,j)=>addCard(c.label,x+(j-.5)*.34,z,(j-.5)*.08,c.back));
+        const allSeats=[...document.querySelectorAll('#seats .seat')],seatIndex=allSeats.indexOf(el);
+        const n=Math.max(1,allSeats.length),mineIndex=Math.max(0,allSeats.findIndex(e=>e.classList.contains('mine'))),a=((seatIndex-mineIndex)/n)*Math.PI*2,x=Math.sin(a)*3.15,z=Math.cos(a)*1.65;
+        getCards('#seats .seat:nth-child('+(seatIndex+1)+') .hole').forEach((c,j)=>placeCard('seat:'+seatIndex+':'+j+':'+c.label,c.label,x+(j-.5)*.78,z,(j-.5)*.035,c.back));
       });
-      // Place the pot in a visible physical stack at the center of the felt.
-      for(let i=0;i<7;i++)makeChip(-.48+(i%4)*.16,.18+Math.floor(i/4)*.058,-.95,i%5);
+      const potValue=Number((document.querySelector('#pot b')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
+      const potCount=potValue>0?Math.max(1,Math.min(10,Math.ceil(Math.log10(potValue+1)*2))):0;
+      for(let i=0;i<potCount;i++)makeChip(-.22+(i%3)*.22,.17+Math.floor(i/3)*.058,-.92,i%5);
+      previousCardKeys=nextCardKeys;
     }else{
-      const dealer=getCards('#dealerCards');dealer.forEach((c,i)=>addCard(c.label,-.42+i*.66,-1.4,(i-.5)*.04,c.back));
+      const dealer=getCards('#dealerCards');
+      dealer.forEach((c,i)=>placeCard('dealer:'+i+':'+c.label,c.label,(i-(dealer.length-1)/2)*.82,-1.25,(i-(dealer.length-1)/2)*.025,c.back));
       const hands=[...document.querySelectorAll('#bjHands .bj-hand')];
-      hands.slice(0,4).forEach((el,idx)=>getCards('#bjHands .bj-hand:nth-child('+(idx+1)+') .cards').forEach((c,i)=>addCard(c.label,-1.25+i*.54+(idx%2)*2.4,.85+Math.floor(idx/2)*.7,(i-.5)*.035,c.back)));
-      for(let i=0;i<5;i++)makeChip(-.4+i*.16,.18,-.55,i%5);
+      hands.forEach((el,idx)=>{
+        const isMine=el.querySelector('b')?.textContent?.trim()===(document.querySelector('#dealerName')?.textContent||'__no_dealer__');
+        const cardsInHand=getCards('#bjHands .bj-hand:nth-child('+(idx+1)+') .cards');
+        const baseX=(idx-(hands.length-1)/2)*1.65;
+        cardsInHand.forEach((c,i)=>placeCard('bj:'+idx+':'+i+':'+c.label,c.label,baseX+(i-(cardsInHand.length-1)/2)*.78,.78+(idx%2)*.18,(i-(cardsInHand.length-1)/2)*.025,c.back));
+      });
+      previousCardKeys=nextCardKeys;
+      const potValue=Number((document.querySelector('#bjActions .bj-bet-value')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
+      for(let i=0;i<Math.min(8,Math.ceil(potValue/100));i++)makeChip(-.28+(i%4)*.18,.17+Math.floor(i/4)*.058,-.55,i%5);
     }
   }
 
@@ -354,6 +383,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     requestAnimationFrame(animate);
     const t=clock.getElapsedTime(), now=performance.now();
     fill.intensity=36+Math.sin(t*.6)*2;
+    for(let i=cardFlights.length-1;i>=0;i--){
+      const f=cardFlights[i];if(now<f.start)continue;
+      const p=Math.min(1,(now-f.start)/f.duration),ease=1-Math.pow(1-p,3);
+      f.card.position.lerpVectors(new THREE.Vector3(0,.72,-2.35),f.targetPosition,ease);
+      f.card.rotation.set(
+        THREE.MathUtils.lerp(-Math.PI/2+.95,f.targetRotation.x,ease),
+        THREE.MathUtils.lerp(0,f.targetRotation.y,ease),
+        THREE.MathUtils.lerp(0,f.targetRotation.z,ease)
+      );
+      if(p>=1)cardFlights.splice(i,1);
+    }
     camera.position.x=Math.sin(t*.12)*.025;
     camera.position.y=1.72+Math.sin(t*.17)*.004;
     camera.lookAt(0,.12,.65);
