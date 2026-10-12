@@ -22,8 +22,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     .game-main.immersive-active .showdown.visible{position:absolute!important;z-index:11!important;left:50%!important;top:66%!important;transform:translateX(-50%)!important;width:min(680px,94%)!important;max-height:17%!important;overflow:auto!important;padding:8px 10px!important;border:1px solid #d3b16a66!important;border-radius:12px!important;background:rgba(4,10,7,.91)!important;color:#eee6d5!important;pointer-events:auto!important}
     .game-main.immersive-active .post-game:not(.hidden){position:absolute!important;z-index:15!important;left:50%!important;top:88%!important;transform:translate(-50%,-50%)!important;display:flex!important;gap:8px!important;visibility:visible!important}
     .game-main.immersive-active .post-game:not(.hidden) .btn{white-space:nowrap;pointer-events:auto!important}
-    .game-main.immersive-active #pot{top:33%!important;left:50%!important;z-index:4!important;min-width:82px;padding:4px 10px;border:1px solid rgba(196,159,86,.35);border-radius:999px;background:rgba(4,13,9,.72);box-shadow:0 5px 18px #0005;font-size:8px!important;line-height:1.1;letter-spacing:.16em!important;pointer-events:none}
-    .game-main.immersive-active #pot b{font-size:15px!important;line-height:1.1;margin-top:2px}
+    .game-main.immersive-active #pot{top:42%!important;left:77%!important;z-index:4!important;min-width:82px;padding:4px 10px;border:1px solid rgba(196,159,86,.35);border-radius:999px;background:rgba(4,13,9,.72);box-shadow:0 5px 18px #0005;font-size:8px!important;line-height:1.1;letter-spacing:.16em!important;pointer-events:none}
+    .game-main.immersive-active #pot b{font-size:15px!important;line-height:1.1;margin-top:2px}@media(max-width:760px){.game-main.immersive-active #pot{top:37%!important;left:78%!important;min-width:68px;padding:4px 7px}.game-main.immersive-active #pot b{font-size:12px!important}}
     .game-main.immersive-active #streetChip{top:27%!important;z-index:4!important;padding:5px 10px;border-radius:999px;background:rgba(4,13,9,.58);border:1px solid rgba(196,159,86,.25)}
     .game-main.immersive-active #blackjackBoard{min-height:650px!important}
     .game-main.immersive-active #bjHands{display:none!important}
@@ -71,7 +71,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
   const feltCanvas=document.createElement('canvas');feltCanvas.width=1024;feltCanvas.height=1024;const feltCtx=feltCanvas.getContext('2d');
-  const feltGradient=feltCtx.createRadialGradient(512,480,90,512,512,720);feltGradient.addColorStop(0,'#0b6844');feltGradient.addColorStop(.62,'#075237');feltGradient.addColorStop(1,'#032c1c');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,1024,1024);
+  const feltGradient=feltCtx.createRadialGradient(512,480,90,512,512,720);feltGradient.addColorStop(0,'#2a83c5');feltGradient.addColorStop(.62,'#15598f');feltGradient.addColorStop(1,'#082e50');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,1024,1024);
   let feltSeed=82417;const rand=()=>{feltSeed=(feltSeed*1664525+1013904223)>>>0;return feltSeed/4294967296};
   for(let i=0;i<54000;i++){const x=rand()*1024,y=rand()*1024,a=.018+rand()*.055;feltCtx.strokeStyle=rand()>.5?`rgba(218,231,207,${a})`:`rgba(0,0,0,${a*1.3})`;feltCtx.lineWidth=.45+rand()*.8;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*5,y+1+rand()*3);feltCtx.stroke()}
   feltCtx.globalAlpha=.14;feltCtx.strokeStyle='#b7c8a8';feltCtx.lineWidth=1;for(let y=0;y<1024;y+=6){feltCtx.beginPath();feltCtx.moveTo(0,y);feltCtx.lineTo(1024,y);feltCtx.stroke()}feltCtx.globalAlpha=1;
@@ -85,7 +85,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const pbrLoader=new THREE.TextureLoader();pbrLoader.setCrossOrigin('anonymous');
   function loadPolyHaven(asset,mapName,onLoad,repeatX=2,repeatY=1){const url=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/${asset}/${asset}_${mapName}_1k.jpg`;pbrLoader.load(url,tex=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatX,repeatY);tex.anisotropy=8;if(mapName==='diff')tex.colorSpace=THREE.SRGBColorSpace;onLoad(tex)},undefined,()=>{});}
 
-  loadPolyHaven('stretch_poplin','diff',t=>{feltMat.map=t;feltMat.color.set('#5b9369');feltMat.needsUpdate=true},4,4);
+  loadPolyHaven('stretch_poplin','diff',t=>{feltMat.map=t;feltMat.color.set('#6e9fc6');feltMat.needsUpdate=true},4,4);
   loadPolyHaven('stretch_poplin','nor_gl',t=>{feltMat.normalMap=t;feltMat.normalScale=new THREE.Vector2(.34,.34);feltMat.needsUpdate=true},4,4);
   loadPolyHaven('stretch_poplin','rough',t=>{feltMat.roughnessMap=t;feltMat.needsUpdate=true},4,4);
   loadPolyHaven('wood_table_001','diff',t=>{railMat.map=t;railMat.color.set('#ffffff');railMat.needsUpdate=true},2,1);
@@ -394,8 +394,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       });
       const potValue=Number((document.querySelector('#pot b')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
       const potCount=potValue>0?Math.max(1,Math.min(10,Math.ceil(Math.log10(potValue+1)*2))):0;
-      for(let i=0;i<potCount;i++)makeChip(-1.38+(i%3)*.19,.17+Math.floor(i/3)*.058,-.72,i%5);
-      for(let col=0;col<3;col++){const count=Math.max(0,Math.ceil((potCount-col)/3));if(count)addChipMark(-1.38+col*.19,.17+(count-1)*.058+.03,-.72,col%5)}
+      for(let i=0;i<potCount;i++)makeChip(1.35+(i%3)*.19,.17+Math.floor(i/3)*.058,-.72,i%5);
+      for(let col=0;col<3;col++){const count=Math.max(0,Math.ceil((potCount-col)/3));if(count)addChipMark(1.35+col*.19,.17+(count-1)*.058+.03,-.72,col%5)}
       previousCardKeys=nextCardKeys;
     }else{
       const dealer=getCards('#dealerCards');
