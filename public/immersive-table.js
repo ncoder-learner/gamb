@@ -53,7 +53,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
   const camera = new THREE.PerspectiveCamera(58, 1, .1, 70);
-  camera.position.set(0, 2.15, 6.25);
+  camera.position.set(0, 2.15, 6.8);
   camera.lookAt(0, .12, .05);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
@@ -412,6 +412,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     camera.position.x=Math.sin(t*.12)*.025;
     camera.position.y=2.15+Math.sin(t*.17)*.004;
     camera.lookAt(0,.12,.05);
+    if(!heroActionStart){heroArm.position.set(.42+Math.sin(t*.7)*.018,.32+Math.sin(t*1.1)*.012,2.9+Math.sin(t*.6)*.025);heroArm.rotation.z=Math.sin(t*.5)*.012;}
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
       const reach=p<.48?p/.48:1-(p-.48)/.52;
