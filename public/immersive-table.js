@@ -70,6 +70,27 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200),mat('#090b09',.95));
   floor.rotation.x=-Math.PI/2; floor.position.y=-1.15; floor.receiveShadow=true; scene.add(floor);
+  // Build a real room around the table instead of leaving the scene in a black void.
+  const backWall=new THREE.Mesh(new THREE.PlaneGeometry(18,7),mat('#171713',.88));
+  backWall.position.set(0,2.1,-7.2);scene.add(backWall);
+  const wallWood=[mat('#29251d',.55),mat('#211e18',.62),mat('#30291e',.52)];
+  for(let i=0;i<13;i++){
+    const x=-7.2+i*1.2;
+    const panel=new THREE.Mesh(new THREE.BoxGeometry(1.08,4.9,.12),wallWood[i%wallWood.length]);
+    panel.position.set(x,1.7,-7.08);panel.castShadow=true;panel.receiveShadow=true;scene.add(panel);
+    const inlay=new THREE.Mesh(new THREE.BoxGeometry(.018,4.2,.025),goldMat);
+    inlay.position.set(x+.51,1.7,-6.99);scene.add(inlay);
+  }
+  const wallSconceMat=mat('#e7c982',.25,.35);
+  for(const x of [-5.4,5.4]){
+    const fixture=new THREE.Mesh(new THREE.CylinderGeometry(.12,.18,.42,16),wallSconceMat);
+    fixture.position.set(x,3.15,-6.85);scene.add(fixture);
+    const glow=new THREE.PointLight(0xffd38a,34,8,2);glow.position.set(x,3.0,-6.2);scene.add(glow);
+  }
+  for(let i=0;i<5;i++){
+    const brass=new THREE.Mesh(new THREE.BoxGeometry(.72,.035,.035),goldMat);
+    brass.position.set(-2.4+i*1.2,3.7,-6.96);scene.add(brass);
+  }
   // Dark wood panels and warm brass inlays give the rail a real manufactured edge.
   for(let i=0;i<8;i++){
     const seam=new THREE.Mesh(new THREE.BoxGeometry(.018,.018,4.1),mat('#51402a',.5,.2));
@@ -122,7 +143,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function mesh(geometry, material, parent, x,y,z, sx=1,sy=1,sz=1){
     const m=new THREE.Mesh(geometry,material);m.position.set(x,y,z);m.scale.set(sx,sy,sz);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m;
   }
-  const suit=mat('#111a1b',.62), shirt=mat('#e9e2d2',.8), skin=mat('#bd896b',.76), hair=mat('#171513',.88), tie=mat('#8c2825',.45);
+  const suit=mat('#111a1b',.48), shirt=mat('#e9e2d2',.72), skin=mat('#bd896b',.62), hair=mat('#171513',.76), tie=mat('#8c2825',.38);
   // Dealer sits beyond the far rail; torso and arms remain visible over the table.
   mesh(new THREE.CapsuleGeometry(.78,.72,5,12),suit,dealerGroup,0,.5,-3.65,1.35,1, .72);
   mesh(new THREE.CylinderGeometry(.23,.27,.48,24),skin,dealerGroup,0,1.47,-3.5,1,1,.9);
@@ -198,21 +219,25 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       lab.position.set(x,1.48,z+(z>0?.56:-.5));seatGroup.add(lab);
       if(!isMine){
         const avatar=new THREE.Group();avatar.position.set(x,.58,z+(z>0?.42:-.42));avatar.rotation.y=Math.atan2(-x,-z);seatGroup.add(avatar);
-        const skinMat=mat(skins[i%skins.length],.86),hairMat=mat(hairs[i%hairs.length],.9),jacketMat=mat(jackets[i%jackets.length],.76),shirtMat=mat(i%3===0?'#e8e0d2':i%3===1?'#d8d7cf':'#bfc7bd',.84);
+        const skinMat=mat(skins[i%skins.length],.61),hairMat=mat(hairs[i%hairs.length],.74),jacketMat=mat(jackets[i%jackets.length],.58),shirtMat=mat(i%3===0?'#e8e0d2':i%3===1?'#d8d7cf':'#bfc7bd',.7);
         mesh(new THREE.CapsuleGeometry(.42,.54,6,14),jacketMat,avatar,0,.52,0,1.25,1,.72);
         mesh(new THREE.CylinderGeometry(.13,.15,.28,18),skinMat,avatar,0,.98,.02);
-        mesh(new THREE.SphereGeometry(.36,32,24),skinMat,avatar,0,1.34,.04, .92,1.08,.88);
-        mesh(new THREE.SphereGeometry(.37,24,18),hairMat,avatar,0,1.54,-.015,.98,.58,.92);
+        mesh(new THREE.SphereGeometry(.36,40,32),skinMat,avatar,0,1.34,.04,.88,1.08,.88);
+        mesh(new THREE.SphereGeometry(.37,32,24),hairMat,avatar,0,1.54,-.015,.98,.58,.92);
+        mesh(new THREE.SphereGeometry(.16,20,16),hairMat,avatar,-.31,1.42,.005,.55,1.2,.72);
+        mesh(new THREE.SphereGeometry(.16,20,16),hairMat,avatar,.31,1.42,.005,.55,1.2,.72);
         mesh(new THREE.BoxGeometry(.22,.18,.035),shirtMat,avatar,0,.83,.27,1,1,1);
-        mesh(new THREE.SphereGeometry(.065,12,10),skinMat,avatar,-.34,1.31,.035,.65,1,1);
-        mesh(new THREE.SphereGeometry(.065,12,10),skinMat,avatar,.34,1.31,.035,.65,1,1);
+        mesh(new THREE.SphereGeometry(.065,16,12),skinMat,avatar,-.34,1.31,.035,.65,1,1);
+        mesh(new THREE.SphereGeometry(.065,16,12),skinMat,avatar,.34,1.31,.035,.65,1,1);
         const eyeMat=mat('#151412',.35),eyeWhite=mat('#eee8dc',.4);
         mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,avatar,-.115,1.38,.345,1,.75,.6);
         mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,avatar,.115,1.38,.345,1,.75,.6);
-        mesh(new THREE.SphereGeometry(.019,10,8),eyeMat,avatar,-.11,1.38,.368);
-        mesh(new THREE.SphereGeometry(.019,10,8),eyeMat,avatar,.12,1.38,.368);
-        mesh(new THREE.ConeGeometry(.055,.14,8),skinMat,avatar,0,1.27,.38,1,.9,.8);
-        mesh(new THREE.BoxGeometry(.11,.018,.018),mat('#5c302b',.7),avatar,0,1.18,.35);
+        mesh(new THREE.SphereGeometry(.019,12,10),eyeMat,avatar,-.11,1.38,.368);
+        mesh(new THREE.SphereGeometry(.019,12,10),eyeMat,avatar,.12,1.38,.368);
+        mesh(new THREE.CapsuleGeometry(.025,.11,4,8),hairMat,avatar,-.115,1.435,.355,1,.55,.55);
+        mesh(new THREE.CapsuleGeometry(.025,.11,4,8),hairMat,avatar,.115,1.435,.355,1,.55,.55);
+        mesh(new THREE.ConeGeometry(.048,.12,12),skinMat,avatar,0,1.27,.385,1,.85,.8);
+        mesh(new THREE.BoxGeometry(.11,.018,.018),mat('#713e37',.56),avatar,0,1.18,.35);
         const armL=new THREE.Group(),armR=new THREE.Group();avatar.add(armL,armR);
         armL.position.set(-.43,.78,.02);armR.position.set(.43,.78,.02);
         const limbGeo=new THREE.CapsuleGeometry(.135,.5,5,10),handGeo=new THREE.SphereGeometry(.13,14,10);
