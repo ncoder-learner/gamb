@@ -389,10 +389,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const f=cardFlights[i];if(now<f.start)continue;
       const p=Math.min(1,(now-f.start)/f.duration),ease=1-Math.pow(1-p,3);
       f.card.position.lerpVectors(new THREE.Vector3(0,.72,-2.35),f.targetPosition,ease);
+      f.card.position.y+=Math.sin(p*Math.PI)*.34;
       f.card.rotation.set(
         THREE.MathUtils.lerp(-Math.PI/2+.95,f.targetRotation.x,ease),
         THREE.MathUtils.lerp(0,f.targetRotation.y,ease),
-        THREE.MathUtils.lerp(0,f.targetRotation.z,ease)
+        THREE.MathUtils.lerp(0,f.targetRotation.z,ease)+Math.sin(p*Math.PI)*.08
       );
       if(p>=1)cardFlights.splice(i,1);
     }
