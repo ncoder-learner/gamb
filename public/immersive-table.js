@@ -41,8 +41,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
-  const camera = new THREE.PerspectiveCamera(47, 1, .1, 70);
-  camera.position.set(0, 3.25, 10.6);
+  const camera = new THREE.PerspectiveCamera(51, 1, .1, 70);
+  camera.position.set(0, 2.2, 9.25);
   camera.lookAt(0, .15, -.85);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
@@ -52,7 +52,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const rim = new THREE.PointLight(0xf1bf65, 46, 15); rim.position.set(0,4,-6); scene.add(rim);
 
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-  const feltMat=new THREE.MeshStandardMaterial({color:'#075336',roughness:.96,metalness:0});
+  const feltCanvas=document.createElement('canvas');feltCanvas.width=512;feltCanvas.height=512;const feltCtx=feltCanvas.getContext('2d');feltCtx.fillStyle='#075336';feltCtx.fillRect(0,0,512,512);let feltSeed=82417;for(let i=0;i<18000;i++){feltSeed=(feltSeed*1664525+1013904223)>>>0;const v= feltSeed%100;feltCtx.fillStyle=v<50?'rgba(210,231,207,.035)':'rgba(0,0,0,.045)';const x=feltSeed%512;feltSeed=(feltSeed*1664525+1013904223)>>>0;const y=feltSeed%512;feltCtx.fillRect(x,y,1+(v%2),1)}const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(2,2);feltTexture.colorSpace=THREE.SRGBColorSpace;const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,roughness:1,metalness:0});
   const railMat=mat('#211c14',.34,.16), goldMat=mat('#b88d43',.27,.58), blackMat=mat('#080907',.45,.08);
   const table = new THREE.Group(); scene.add(table);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1,1,1.0,96),mat('#171914',.42,.12));
@@ -93,18 +93,27 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const seatGroup=new THREE.Group();scene.add(seatGroup);
   const dealerGroup=new THREE.Group();scene.add(dealerGroup);
   const seatArmRefs=new Map();
-  const chipMaterials=['#eee6d2','#bb3d35','#2366a7','#252725','#d4a43d','#3b8a5e'].map(c=>mat(c,.31,.04));
+  const chipMaterials=['#e7d9b8','#bd342e','#2566b1','#252725','#d2a23d','#31855a'].map(c=>mat(c,.72,.015));
   const chipEdge=mat('#f0e4c8',.42,.08);
   function makeChip(x,y,z,colorIndex=0,rot=0){
     const g=new THREE.Group();
     const body=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.055,32),chipMaterials[colorIndex%chipMaterials.length]);body.castShadow=true;body.receiveShadow=true;g.add(body);
-    const top=new THREE.Mesh(new THREE.CylinderGeometry(.122,.122,.057,32),mat('#f3e8d1',.38,.03));top.position.y=.002;g.add(top);
+    const top=new THREE.Mesh(new THREE.CylinderGeometry(.122,.122,.057,32),mat(['#f4e9d2','#e8c8c2','#c5d8ed','#d3d2ca','#f1dfa9','#c5dfcc'][colorIndex%6],.76,.01));top.position.y=.002;g.add(top);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.145,.008,5,32),chipEdge);ring.rotation.x=Math.PI/2;ring.position.y=.029;g.add(ring);
     for(let j=0;j<8;j++){const stripe=new THREE.Mesh(new THREE.BoxGeometry(.036,.056,.018),chipEdge);const a=j*Math.PI/4;stripe.position.set(Math.sin(a)*.156,0,Math.cos(a)*.156);stripe.rotation.y=a;g.add(stripe)}
     g.position.set(x,y,z);g.rotation.y=rot;chipsGroup.add(g);return g;
   }
+
+  function addChipMark(x,z,colorIndex){
+    const canvas=document.createElement('canvas');canvas.width=128;canvas.height=128;const ctx=canvas.getContext('2d');
+    ctx.clearRect(0,0,128,128);ctx.strokeStyle='rgba(255,255,255,.9)';ctx.lineWidth=5;ctx.beginPath();ctx.arc(64,64,47,0,Math.PI*2);ctx.stroke();
+    ctx.fillStyle='#fffaf0';ctx.font='bold 39px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(['1','5','25','100','500','1K'][colorIndex%6],64,65);
+    const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;
+    const mark=new THREE.Mesh(new THREE.PlaneGeometry(.19,.19),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}));mark.rotation.x=-Math.PI/2;mark.position.set(x,.203,z);chipsGroup.add(mark);
+  }
+
   function chipStack(x,z,count,color){
-    for(let i=0;i<count;i++)makeChip(x,.17+i*.058,z,color,i*.12);
+    for(let i=0;i<count;i++){makeChip(x,.17+i*.058,z,color,i*.12);if(i===count-1)addChipMark(x,z,color);}
   }
   chipStack(-3.35,1.05,6,1);chipStack(-3.0,1.25,4,0);chipStack(3.2,-.65,5,2);chipStack(3.48,-.42,3,4);
   for(let i=0;i<5;i++)makeChip(-.35+i*.18,.17, -.45, i%5, i*.3);
@@ -148,7 +157,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   }
   function addCard(label,x,z,rot=0,back=false){
     const front=cardTexture(label||'?',back), side=mat('#e0d7c4',.48);
-    const m=new THREE.Mesh(cardGeo,[new THREE.MeshBasicMaterial({map:front}),side]);
+    const m=new THREE.Mesh(cardGeo,[side,new THREE.MeshBasicMaterial({map:front})]);
     m.rotation.x=-Math.PI/2;m.rotation.z=rot;m.position.set(x,.22,z);m.castShadow=true;m.receiveShadow=true;cardGroup.add(m);return m;
   }
   function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
@@ -306,7 +315,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const t=clock.getElapsedTime(), now=performance.now();
     fill.intensity=36+Math.sin(t*.6)*2;
     camera.position.x=Math.sin(t*.12)*.025;
-    camera.position.y=3.25+Math.sin(t*.17)*.012;
+    camera.position.y=2.2+Math.sin(t*.17)*.008;
     camera.lookAt(0,.15,-.85);
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
