@@ -183,7 +183,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     // Keep the beveled card body and use a separate plane for the printed face.
     // ExtrudeGeometry's default UVs are world-unit based, which can crop a CanvasTexture.
     const card=new THREE.Group();
-    card.position.set(x,.31,z);card.rotation.set(-Math.PI/2+.58,rot,0);
+    card.position.set(x,.37,z);card.rotation.set(-Math.PI/2+.58,rot,0);
     const body=new THREE.Mesh(cardGeo,side);
     body.castShadow=true;body.receiveShadow=true;card.add(body);
     const face=new THREE.Mesh(
