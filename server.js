@@ -108,7 +108,7 @@ function eval5(cards){
   const pairs=groups.filter(g=>g.n===2).sort((a,b)=>b.v-a.v); if(pairs.length===2)return [2,pairs[0].v,pairs[1].v,groups.find(g=>g.n===1).v];
   if(pairs.length===1)return [1,pairs[0].v,...groups.filter(g=>g.n===1).map(g=>g.v).sort((a,b)=>b-a)]; return [0,...vals];
 }
-function eval7(cards){return combos(cards,5).sort((a,b)=>cmp(eval5(b),eval5(a)))[0] ? eval5(combos(cards,5).sort((a,b)=>cmp(eval5(b),eval5(a)))[0]) : [0];}
+function eval7(cards){let best=[0];for(const hand of combos(cards,5)){const score=eval5(hand);if(cmp(score,best)>0)best=score;}return best;}
 function cmp(a,b){for(let i=0;i<Math.max(a.length,b.length);i++){const d=(a[i]||0)-(b[i]||0);if(d)return d;}return 0;}
 function player({id=uid(),name='Player',bot=false,botType=null,socketId=null,accountId=null}){return {id,name:cleanName(name),accountId,bot,botType,socketId,connected:!!socketId,host:false,chips:STARTING_CHIPS,folded:false,allIn:false,bet:0,totalBet:0,hole:[],action:'',lastAction:'',reconnectToken:uid('rt')}}
 function newRoom(host){host.host=true;return {code:roomCode(),hostId:host.id,players:[host],game:'poker',status:'LOBBY',chat:[],joinRequests:[],turnPlayerId:null,turnEndsAt:null,timer:null,poker:{phase:'LOBBY',deck:[],community:[],pot:0,highestBet:0,minRaise:BIG_BLIND,dealerIndex:0,needsAction:new Set(),winners:[],showdown:[],handNo:0},blackjack:{phase:'BETTING',deck:[],hands:{},dealer:[],hidden:true},roulette:{phase:'BETTING',bets:[],result:null},chess:{game:null,white:null,black:null,wagerPot:0,entryBet:0,winners:[]}}}
