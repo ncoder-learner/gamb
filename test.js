@@ -20,7 +20,7 @@ test('live-player invitations join the exact requesting socket and reject stale 
   assert.match(s,/io\.sockets\.sockets\.get\(req\.socketId\)/);
   assert.match(s,/That player disconnected\. Ask them to request again\./);
   assert.match(s,/p\.connected&&!p\.bot/);
-  assert.match(s,/hostSocket\.data\.room===room\.code/);
+  assert.match(s,/hostSocket\.data\.room!==room\.code/);
 });
 test('abandoned rooms and expired join requests are cleaned up',()=>{
   const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
