@@ -9,8 +9,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   css.textContent = `
     .game-main{position:relative;isolation:isolate;min-height:760px!important}
     .immersive-scene{position:absolute;inset:0 0 92px;width:100%;height:calc(100% - 92px);min-height:600px;display:block;z-index:1;pointer-events:none}
-    .game-main.immersive-active>.board:not(.hidden){position:relative!important;z-index:0!important;background:transparent!important;border:0!important;padding:0!important;min-height:650px}
-    .game-main.immersive-active>.board:not(.hidden)>:not(.immersive-scene){visibility:hidden!important;pointer-events:none!important}
+    .game-main.immersive-active>.board:not(.hidden){position:relative!important;z-index:2!important;background:transparent!important;border:0!important;padding:0!important;min-height:650px}
+    .game-main.immersive-active>.poker-board .poker-stage{background:transparent!important;perspective:none!important}.game-main.immersive-active .table-shadow,.game-main.immersive-active .casino-ambient{display:none!important}.game-main.immersive-active .table-felt{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:none!important}.game-main.immersive-active .table-felt:after{display:none!important}.game-main.immersive-active .bj-table{background:transparent!important;border:0!important;box-shadow:none!important}.game-main.immersive-active .community .card,.game-main.immersive-active .my-hand .card,.game-main.immersive-active .seat .hole .card,.game-main.immersive-active #dealerCards .card,.game-main.immersive-active #bjHands .card{visibility:hidden!important}
     .game-main.immersive-active>.board:not(.hidden) .table-felt,.game-main.immersive-active>.board:not(.hidden) .bj-table{visibility:hidden!important}
     .game-main>.actionbar{position:relative;z-index:3;background:rgba(7,10,8,.94)!important;border:1px solid rgba(211,178,104,.28)!important;backdrop-filter:blur(18px);box-shadow:0 14px 40px #0009}
     .game-main>.actionbar .btn{pointer-events:auto}
@@ -41,9 +41,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
-  const camera = new THREE.PerspectiveCamera(36, 1, .1, 70);
-  camera.position.set(0, 7.9, 11.7);
-  camera.lookAt(0, .25, -.45);
+  const camera = new THREE.PerspectiveCamera(47, 1, .1, 70);
+  camera.position.set(0, 4.25, 10.8);
+  camera.lookAt(0, .15, -.85);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
   const key = new THREE.SpotLight(0xffe4ad, 190, 32, Math.PI/4.2, .5, 1.3);
@@ -147,7 +147,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   }
   function addCard(label,x,z,rot=0,back=false){
     const front=cardTexture(label||'?',back), side=mat('#e0d7c4',.48);
-    const m=new THREE.Mesh(cardGeo,[side,new THREE.MeshBasicMaterial({map:front})]);
+    const m=new THREE.Mesh(cardGeo,[new THREE.MeshBasicMaterial({map:front}),side]);
     m.rotation.x=-Math.PI/2;m.rotation.z=rot;m.position.set(x,.22,z);m.castShadow=true;m.receiveShadow=true;cardGroup.add(m);return m;
   }
   function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
@@ -177,6 +177,37 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   function getCards(selector){return [...document.querySelectorAll(selector)].flatMap(el=>[...el.querySelectorAll('.card')].map(c=>({label:(c.textContent||'').trim().replace(/\s+/g,' ')||'?',back:c.classList.contains('back')})));}
   let signature='',lastRender=0,gameType='poker',lastSeatSig='';
+
+  // Player-side forearms and hands enter frame from the seated first-person viewpoint.
+  const actionFxGroup = new THREE.Group(); scene.add(actionFxGroup);
+  const heroArm = new THREE.Group(); scene.add(heroArm);
+  const sleeveMat = mat('#202723',.72), cuffMat = mat('#c9b98f',.7), handMat = mat('#b98362',.8);
+  const heroSleeve = new THREE.Mesh(new THREE.CapsuleGeometry(.19,.95,5,12),sleeveMat);
+  heroSleeve.rotation.x = -Math.PI/2; heroSleeve.position.set(.23,0,.12); heroSleeve.castShadow=true; heroArm.add(heroSleeve);
+  const heroCuff = new THREE.Mesh(new THREE.CylinderGeometry(.19,.19,.12,20),cuffMat);
+  heroCuff.rotation.x = -Math.PI/2; heroCuff.position.set(.23,0,-.42); heroArm.add(heroCuff);
+  const heroHand = new THREE.Mesh(new THREE.SphereGeometry(.22,20,14),handMat);
+  heroHand.scale.set(1.15,.65,1.35); heroHand.position.set(.23,.01,-.57); heroHand.castShadow=true; heroArm.add(heroHand);
+  heroArm.position.set(.7,.5,5.25); heroArm.visible=false;
+  const movingChips=[];
+  function throwChips(fromX,fromZ,count=3,color=1){
+    for(let i=0;i<count;i++){
+      const g=new THREE.Group();
+      const body=new THREE.Mesh(new THREE.CylinderGeometry(.15,.15,.05,28),chipMaterials[color%chipMaterials.length]);g.add(body);
+      const edge=new THREE.Mesh(new THREE.TorusGeometry(.125,.009,5,28),chipEdge);edge.rotation.x=Math.PI/2;edge.position.y=.026;g.add(edge);
+      g.position.set(fromX+(i-count/2)*.11,.22+i*.035,fromZ+(i%2)*.08);actionFxGroup.add(g);
+      movingChips.push({g,from:new THREE.Vector3(g.position.x,g.position.y,g.position.z),to:new THREE.Vector3(-.2+(i%3)*.18,.2,-.82+(i%2)*.12),start:performance.now()+i*65,duration:520+i*40});
+    }
+  }
+  let heroActionStart=0;
+  function animateHeroAction(action){
+    if(!['CALL','RAISE','ALL-IN','CHECK'].includes(String(action).toUpperCase()))return;
+    heroActionStart=performance.now();heroArm.visible=true;
+    if(['CALL','RAISE','ALL-IN'].includes(String(action).toUpperCase()))throwChips(.55,3.0,action==='ALL-IN'?5:3,action==='RAISE'?4:1);
+  }
+  const previousActions=new Map();
+  let firstActionSync=true;
+
   function syncScene(force=false){
     const pokerVisible=!document.querySelector('#pokerBoard')?.classList.contains('hidden');
     const bjVisible=!document.querySelector('#blackjackBoard')?.classList.contains('hidden');
@@ -188,7 +219,22 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const cards=gameType==='blackjack'
       ? [...getCards('#dealerCards'),...getCards('#bjHands .bj-hand .cards')]
       : [...getCards('#community'),...getCards('#myHand'),...getCards('#seats .hole')];
-    const seatSig=[...document.querySelectorAll('#seats .seat')].map(e=>e.textContent).join('|');
+    const seatNodes=[...document.querySelectorAll('#seats .seat')];
+    const seatSig=seatNodes.map(e=>e.textContent).join('|');
+    if(!firstActionSync){
+      seatNodes.forEach((el,i)=>{
+        const action=(el.querySelector('.seat-action')?.textContent||'').replace('• YOUR TURN','').trim().toUpperCase();
+        const old=previousActions.get(i);
+        if(action&&action!==old&&['CALL','RAISE','ALL-IN','CHECK','FOLD'].some(a=>action.startsWith(a))){
+          const n=Math.max(1,seatNodes.length),mineIndex=Math.max(0,seatNodes.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2;
+          const x=Math.sin(a)*3.15,z=Math.cos(a)*1.65;
+          if(['CALL','RAISE','ALL-IN'].some(v=>action.startsWith(v)))throwChips(x,z,action.startsWith('ALL-IN')?5:3,action.startsWith('RAISE')?4:1);
+          if(el.classList.contains('mine'))animateHeroAction(action);
+          else if(action.startsWith('CHECK')){const marker=labelSprite('CHECK','#e8e1c8');marker.position.set(x,.9,z);seatGroup.add(marker);setTimeout(()=>{seatGroup.remove(marker);marker.material.map?.dispose();marker.material.dispose()},850)}
+        }
+        previousActions.set(i,action);
+      });
+    } else {seatNodes.forEach((el,i)=>previousActions.set(i,(el.querySelector('.seat-action')?.textContent||'').trim().toUpperCase()));firstActionSync=false;}
     const sig=gameType+'|'+phase+'|'+cards.map(c=>c.label+(c.back?'b':'f')).join(',');
     if(!force&&sig===signature&&seatSig===lastSeatSig)return;
     const seatsChanged=force||seatSig!==lastSeatSig;lastSeatSig=seatSig;signature=sig;
@@ -224,11 +270,27 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const clock=new THREE.Clock();
   function animate(){
     requestAnimationFrame(animate);
-    const t=clock.getElapsedTime();
-    // Gentle light breathing and a tiny table-side camera drift add life without moving the cards.
+    const t=clock.getElapsedTime(), now=performance.now();
     fill.intensity=36+Math.sin(t*.6)*2;
-    camera.position.x=Math.sin(t*.12)*.055;
-    camera.lookAt(0,.2,-.45);
+    camera.position.x=Math.sin(t*.12)*.025;
+    camera.position.y=4.25+Math.sin(t*.17)*.012;
+    camera.lookAt(0,.15,-.85);
+    if(heroActionStart){
+      const p=Math.min(1,(now-heroActionStart)/620);
+      const reach=p<.48?p/.48:1-(p-.48)/.52;
+      heroArm.visible=p<1;
+      heroArm.position.set(.7-reach*.48,.5+Math.sin(reach*Math.PI)*.06,5.25-reach*2.05);
+      if(p>=1)heroActionStart=0;
+    }
+    for(let i=movingChips.length-1;i>=0;i--){
+      const c=movingChips[i],p=Math.max(0,Math.min(1,(now-c.start)/c.duration));
+      if(now<c.start)continue;
+      const eased=1-Math.pow(1-p,3);
+      c.g.position.lerpVectors(c.from,c.to,eased);
+      c.g.position.y=.2+Math.sin(p*Math.PI)*.48;
+      c.g.rotation.x=p*Math.PI*2;c.g.rotation.z=p*Math.PI*2;
+      if(p>=1){actionFxGroup.remove(c.g);c.g.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material){if(Array.isArray(o.material))o.material.forEach(m=>m.dispose());else o.material.dispose()}});movingChips.splice(i,1)}
+    }
     renderer.render(scene,camera);
   }
   animate();
