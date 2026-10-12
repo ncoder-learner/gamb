@@ -382,10 +382,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const potValue=Number((document.querySelector('#pot b')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
       const potCount=potValue>0?Math.max(1,Math.min(10,Math.ceil(Math.log10(potValue+1)*2))):0;
       for(let i=0;i<potCount;i++)makeChip(-1.38+(i%3)*.19,.17+Math.floor(i/3)*.058,-.72,i%5);
+      for(let col=0;col<3;col++){const count=Math.max(0,Math.ceil((potCount-col)/3));if(count)addChipMark(-1.38+col*.19,.17+(count-1)*.058+.03,-.72,col%5)}
       previousCardKeys=nextCardKeys;
     }else{
       const dealer=getCards('#dealerCards');
       dealer.forEach((c,i)=>placeCard('dealer:'+i+':'+c.label,c.label,(i-(dealer.length-1)/2)*.82,-1.25,(i-(dealer.length-1)/2)*.025,c.back));
+      const dealerLabel=labelSprite('DEALER','#e5c983');dealerLabel.position.set(0,.86,-1.82);dealerLabel.scale.set(1.45,.34,1);seatGroup.add(dealerLabel);
       const hands=[...document.querySelectorAll('#bjHands .bj-hand')],heroIndex=Math.max(0,hands.findIndex(el=>el.classList.contains('mine'))),seatCount=Math.max(1,hands.length);
       hands.forEach((el,idx)=>{
         const isMine=el.classList.contains('mine');
@@ -403,7 +405,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       });
       previousCardKeys=nextCardKeys;
       const potValue=[...document.querySelectorAll('#bjHands .bj-hand')].reduce((sum,el)=>{const m=el.textContent.match(/\bbet\s+([\d,]+)/i);return sum+(m?Number(m[1].replace(/,/g,''))||0:0)},0);
-      for(let i=0;i<Math.min(8,Math.ceil(potValue/100));i++)makeChip(-1.12+(i%4)*.17,.17+Math.floor(i/4)*.058,-.7,i%5);
+      const bjChipCount=Math.min(8,Math.ceil(potValue/100));for(let i=0;i<bjChipCount;i++)makeChip(-1.12+(i%4)*.17,.17+Math.floor(i/4)*.058,-.7,i%5);for(let col=0;col<4;col++){const count=Math.max(0,Math.ceil((bjChipCount-col)/4));if(count)addChipMark(-1.12+col*.17,.17+(count-1)*.058+.03,-.7,col%5)}
     }
   }
 
