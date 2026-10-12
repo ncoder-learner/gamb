@@ -92,6 +92,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const cardGroup=new THREE.Group();scene.add(cardGroup);
   const seatGroup=new THREE.Group();scene.add(seatGroup);
   const dealerGroup=new THREE.Group();scene.add(dealerGroup);
+  const seatArmRefs=new Map();
   const chipMaterials=['#eee6d2','#bb3d35','#2366a7','#252725','#d4a43d','#3b8a5e'].map(c=>mat(c,.31,.04));
   const chipEdge=mat('#f0e4c8',.42,.08);
   function makeChip(x,y,z,colorIndex=0,rot=0){
@@ -158,18 +159,48 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));sp.scale.set(1.65,.42,1);return sp;
   }
   function rebuildSeats(){
-    clearGroup(seatGroup);
+    clearGroup(seatGroup);seatArmRefs.clear();
     const nodes=[...document.querySelectorAll('#seats .seat')];
+    const skins=['#c58d6d','#8e5d43','#e0b18b','#ad7659','#d39a73','#77513e','#edc5a0','#9b684d'];
+    const jackets=['#202c2a','#312d29','#283441','#3b2926','#26352d','#332d3c','#222927','#40332a'];
+    const hairs=['#181513','#35271e','#101314','#3a2419','#1b1b1b','#513a2b','#24201b','#161616'];
     nodes.forEach((el,i)=>{
       const n=Math.max(1,nodes.length),mineIndex=Math.max(0,nodes.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2;
       const x=Math.sin(a)*3.85,z=Math.cos(a)*2.05;
-      const isMine=el.classList.contains('mine'), active=el.classList.contains('active');
-      const pedestal=mesh(new THREE.CylinderGeometry(.24,.32,.5,24),mat(isMine?'#a7833e':'#252821',.5,.12),seatGroup,x,.33,z,.9,1,.9);
-      const cushion=mesh(new THREE.CylinderGeometry(.48,.52,.14,32),mat(isMine?'#3a2820':'#17211b',.6),seatGroup,x,.64,z,.95,1,.9);
+      const isMine=el.classList.contains('mine'),active=el.classList.contains('active');
+      mesh(new THREE.CylinderGeometry(.24,.32,.5,24),mat(isMine?'#a7833e':'#252821',.5,.12),seatGroup,x,.33,z,.9,1,.9);
+      mesh(new THREE.CylinderGeometry(.48,.52,.14,32),mat(isMine?'#3a2820':'#17211b',.6),seatGroup,x,.64,z,.95,1,.9);
       const back=mesh(new THREE.CapsuleGeometry(.39,.6,4,10),mat('#1c201a',.48),seatGroup,x,.98,z+(z>0?.42:-.42),1,.8,.55);
       back.rotation.x=z>0?-.2:.2;
       const lab=labelSprite((el.querySelector('.seat-name')?.textContent||'PLAYER').trim(),active?'#ffdb84':'#f4e7c2');
       lab.position.set(x,1.48,z+(z>0?.56:-.5));seatGroup.add(lab);
+      if(!isMine){
+        const avatar=new THREE.Group();avatar.position.set(x,.58,z+(z>0?.42:-.42));avatar.rotation.y=Math.atan2(-x,-z);seatGroup.add(avatar);
+        const skinMat=mat(skins[i%skins.length],.86),hairMat=mat(hairs[i%hairs.length],.9),jacketMat=mat(jackets[i%jackets.length],.76),shirtMat=mat(i%3===0?'#e8e0d2':i%3===1?'#d8d7cf':'#bfc7bd',.84);
+        mesh(new THREE.CapsuleGeometry(.42,.54,6,14),jacketMat,avatar,0,.52,0,1.25,1,.72);
+        mesh(new THREE.CylinderGeometry(.13,.15,.28,18),skinMat,avatar,0,.98,.02);
+        mesh(new THREE.SphereGeometry(.36,32,24),skinMat,avatar,0,1.34,.04, .92,1.08,.88);
+        mesh(new THREE.SphereGeometry(.37,24,18),hairMat,avatar,0,1.54,-.015,.98,.58,.92);
+        mesh(new THREE.BoxGeometry(.22,.18,.035),shirtMat,avatar,0,.83,.27,1,1,1);
+        mesh(new THREE.SphereGeometry(.065,12,10),skinMat,avatar,-.34,1.31,.035,.65,1,1);
+        mesh(new THREE.SphereGeometry(.065,12,10),skinMat,avatar,.34,1.31,.035,.65,1,1);
+        const eyeMat=mat('#151412',.35),eyeWhite=mat('#eee8dc',.4);
+        mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,avatar,-.115,1.38,.345,1,.75,.6);
+        mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,avatar,.115,1.38,.345,1,.75,.6);
+        mesh(new THREE.SphereGeometry(.019,10,8),eyeMat,avatar,-.11,1.38,.368);
+        mesh(new THREE.SphereGeometry(.019,10,8),eyeMat,avatar,.12,1.38,.368);
+        mesh(new THREE.ConeGeometry(.055,.14,8),skinMat,avatar,0,1.27,.38,1,.9,.8);
+        mesh(new THREE.BoxGeometry(.11,.018,.018),mat('#5c302b',.7),avatar,0,1.18,.35);
+        const armL=new THREE.Group(),armR=new THREE.Group();avatar.add(armL,armR);
+        armL.position.set(-.43,.78,.02);armR.position.set(.43,.78,.02);
+        const limbGeo=new THREE.CapsuleGeometry(.135,.5,5,10),handGeo=new THREE.SphereGeometry(.13,14,10);
+        const l1=new THREE.Mesh(limbGeo,jacketMat),r1=new THREE.Mesh(limbGeo,jacketMat);
+        l1.rotation.x=Math.PI/2;r1.rotation.x=Math.PI/2;l1.position.z=.22;r1.position.z=.22;armL.add(l1);armR.add(r1);
+        const l2=new THREE.Mesh(handGeo,skinMat),r2=new THREE.Mesh(handGeo,skinMat);
+        l2.position.set(0,-.04,.53);r2.position.set(0,-.04,.53);l2.scale.set(1,.72,1.25);r2.scale.set(1,.72,1.25);armL.add(l2);armR.add(r2);
+        [l1,r1,l2,r2].forEach(o=>{o.castShadow=true;o.receiveShadow=true});
+        seatArmRefs.set(i,{armL,armR,baseL:{y:armL.position.y,z:armL.position.z},baseR:{y:armR.position.y,z:armR.position.z}});
+      }
       const stack=el.querySelector('.seat-chips b')?.textContent;
       if(stack){for(let k=0;k<3;k++)makeChip(x+(k-1)*.15,.18+k*.058,z+(z>0?-.6:.6),isMine?4:([0,1,2,3,4][i%5]));}
     });
@@ -206,6 +237,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     if(['CALL','RAISE','ALL-IN'].includes(String(action).toUpperCase()))throwChips(.55,3.0,action==='ALL-IN'?5:3,action==='RAISE'?4:1);
   }
   const previousActions=new Map();
+  const seatGestures=new Map();
   let firstActionSync=true;
 
   function syncScene(force=false){
@@ -226,6 +258,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         const action=(el.querySelector('.seat-action')?.textContent||'').replace('• YOUR TURN','').trim().toUpperCase();
         const old=previousActions.get(i);
         if(action&&action!==old&&['CALL','RAISE','ALL-IN','CHECK','FOLD'].some(a=>action.startsWith(a))){
+          seatGestures.set(i,performance.now());
           const n=Math.max(1,seatNodes.length),mineIndex=Math.max(0,seatNodes.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2;
           const x=Math.sin(a)*3.15,z=Math.cos(a)*1.65;
           if(['CALL','RAISE','ALL-IN'].some(v=>action.startsWith(v)))throwChips(x,z,action.startsWith('ALL-IN')?5:3,action.startsWith('RAISE')?4:1);
@@ -281,6 +314,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       heroArm.visible=p<1;
       heroArm.position.set(.7-reach*.48,.5+Math.sin(reach*Math.PI)*.06,5.25-reach*2.05);
       if(p>=1)heroActionStart=0;
+    }
+    for(const [i,startAt] of seatGestures){
+      const refs=seatArmRefs.get(i),p=Math.min(1,(now-startAt)/620),reach=p<.42?p/.42:1-(p-.42)/.58;
+      if(refs){
+        refs.armL.position.z=refs.baseL.z+reach*.42;refs.armR.position.z=refs.baseR.z+reach*.42;
+        refs.armL.position.y=refs.baseL.y-reach*.12;refs.armR.position.y=refs.baseR.y-reach*.12;
+      }
+      if(p>=1)seatGestures.delete(i);
     }
     for(let i=movingChips.length-1;i>=0;i--){
       const c=movingChips[i],p=Math.max(0,Math.min(1,(now-c.start)/c.duration));
