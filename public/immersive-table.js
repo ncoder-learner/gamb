@@ -215,8 +215,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         const back=mesh(new THREE.CapsuleGeometry(.39,.6,4,10),mat('#1c201a',.48),seatGroup,x,.98,z+(z>0?.42:-.42),1,.8,.55);
         back.rotation.x=z>0?-.2:.2;
       }
-      const lab=labelSprite((el.querySelector('.seat-name')?.textContent||'PLAYER').trim(),active?'#ffdb84':'#f4e7c2');
-      lab.position.set(x,1.48,z+(z>0?.56:-.5));seatGroup.add(lab);
+      if(!isMine){
+        const lab=labelSprite((el.querySelector('.seat-name')?.textContent||'PLAYER').trim(),active?'#ffdb84':'#f4e7c2');
+        lab.position.set(x,1.48,z+(z>0?.56:-.5));seatGroup.add(lab);
+      }
       if(!isMine){
         const avatar=new THREE.Group();avatar.position.set(x,.58,z+(z>0?.42:-.42));avatar.rotation.y=Math.atan2(-x,-z);seatGroup.add(avatar);
         const skinMat=mat(skins[i%skins.length],.61),hairMat=mat(hairs[i%hairs.length],.74),jacketMat=mat(jackets[i%jackets.length],.58),shirtMat=mat(i%3===0?'#e8e0d2':i%3===1?'#d8d7cf':'#bfc7bd',.7);
