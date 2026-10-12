@@ -40,7 +40,7 @@ function renderPlayers(){
  $('#gamePlayers').innerHTML=state.players.map(p=>`<div class="game-player ${state.turnPlayerId===p.id?'active':''}"><div class="gp-top"><b>${esc(p.name)}</b><span>${p.bot?'BOT':'HUMAN'}</span></div><div class="gp-sub">${p.chips.toLocaleString()} chips · ${esc(p.lastAction||'')}</div></div>`).join('')
 }
 function renderChat(){const html=(state.chat||[]).map(m=>`<div class="chat-line ${m.system?'system':''}">${m.system?'':`<b>${esc(m.name)}:</b>`}${esc(m.text)}</div>`).join('');$('#chatLog').innerHTML=html;$('#gameChat').innerHTML=html;['#chatLog','#gameChat'].forEach(s=>{const x=$(s);x.scrollTop=x.scrollHeight})}
-function card(c){if(c==='??')return '<div class="card back">?</div>';return `<div class="card ${/[♥♦]/.test(c)?'red':''}">${esc(c)}</div>`}
+function card(c){if(c==='??')return '<div class="card back">?</div>';const face=String(c).replace(/^T(?=[♠♥♦♣])/,'10');return `<div class="card ${/[♥♦]/.test(face)?'red':''}">${esc(face)}</div>`}
 function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');$('#pokerBoard').classList.toggle('hidden',g!=='poker');$('#blackjackBoard').classList.toggle('hidden',g!=='blackjack');$('#rouletteBoard').classList.toggle('hidden',g!=='roulette');$('#chessBoard').classList.toggle('hidden',g!=='chess');$('#pokerActions').classList.toggle('hidden',g!=='poker');$('#bjActions').classList.toggle('hidden',g!=='blackjack');if(g==='poker')renderPoker();if(g==='blackjack')renderBJ();if(g==='roulette')renderRoulette();if(g==='chess')renderChess()}
 function seatPos(i,n,focus=0){const a=(90+(360/n)*(i-focus))*Math.PI/180;return {left:50+42*Math.cos(a),top:50+38*Math.sin(a)}}
 function renderPoker(){
@@ -100,7 +100,7 @@ function renderPoker(){
  if($('#turnBadge'))$('#turnBadge').textContent=myTurn?'YOUR TURN':turnName?turnName+'\'S TURN':phase==='HAND_COMPLETE'?'SHOWDOWN':phase;
  if(phase==='HAND_COMPLETE'&&$('#playAgainBtn'))$('#playAgainBtn').textContent='NEXT HAND · '+Math.max(0,Math.ceil(((state.turnEndsAt||0)-Date.now())/1000))+'s';
  if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
- const strength=$('#myHandStrength');if(strength)strength.textContent='';
+ const strength=$('#myHandStrength');if(strength){const current=state.me?.currentHand;strength.textContent=current||(phase==='PREFLOP'?'PRE-FLOP · TWO PRIVATE CARDS':'HAND IN PROGRESS');strength.classList.toggle('live',!!current);strength.classList.toggle('turn',myTurn&&phase!=='HAND_COMPLETE');}
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
  if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
@@ -131,7 +131,30 @@ function showPokerActionFX(player,action){
  }
 }
 function renderBJ(){const b=state.blackjack||{},mine=mePlayer();$('#dealerCards').innerHTML=(b.dealer||[]).map(card).join('');$('#bjHands').innerHTML=state.players.map(p=>{const h=b.hands?.[p.id];if(!h||!h.bet)return `<div class="bj-hand"><b>${esc(p.name)}</b><div class="muted">No bet</div></div>`;return `<div class="bj-hand ${state.turnPlayerId===p.id?'bj-active':''}"><b>${esc(p.name)} ${p.bot?'🤖':''}</b><div class="cards">${h.cards.map(card).join('')}</div><div>${h.total} · bet ${h.bet}</div><div class="eyebrow">${esc(h.result||(!h.done?'PLAYING':''))}</div></div>`}).join('');const myTurn=state.turnPlayerId===mine?.id;$$('[data-bj]').forEach(b=>b.disabled=!myTurn);$('#bjBetBtn').disabled=b.phase!=='BETTING'||!mine}
-function renderRoulette(){const r=state.roulette||{};$('#rouletteResult').textContent=r.result?`RESULT: ${r.result}`:r.phase==='SPINNING'?'SPINNING…':'PLACE YOUR BETS';$('#wheel').classList.toggle('spinning',r.phase==='SPINNING');const mine=mePlayer();$('#spinBtn').disabled=!mine?.host||r.phase!=='BETTING';}
+function renderRoulette(){
+  const r=state.roulette||{},bets=r.bets||[],players=state.players||[];
+  const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+  const order=['0',28,9,26,30,11,7,20,32,17,5,22,34,15,3,24,36,13,1,'00',27,10,25,29,12,8,19,31,18,6,21,33,16,4,23,35,14,2].map(String);
+  const wheel=$('#wheel'),pockets=$('#wheelPockets');
+  if(wheel&&pockets&&!pockets.childElementCount){
+    const angle=360/order.length;
+    pockets.innerHTML=order.map((n,i)=>'<span class="wheel-pocket '+((n==='0'||n==='00')?'green':reds.has(Number(n))?'red':'black')+'" style="--pocket-index:'+i+'">'+n+'</span>').join('');
+    wheel.style.background='conic-gradient(from '+(-angle/2)+'deg,'+order.map((n,i)=>{const color=(n==='0'||n==='00')?'#168050':reds.has(Number(n))?'#a92d2b':'#171a17';return color+' '+(i*angle)+'deg '+((i+1)*angle)+'deg'}).join(',')+')';
+  }
+  if($('#roulettePhase'))$('#roulettePhase').textContent=r.phase==='SPINNING'?'WHEEL IN MOTION':r.phase==='RESULT'?'ROUND RESULT':'BETTING OPEN';
+  $('#rouletteResult').textContent=r.phase==='SPINNING'?'The wheel is spinning…':r.result?'Spin complete':'Choose your bets, then spin';
+  const result=$('#rouletteNumberDisplay');
+  if(result){result.textContent=r.result??'—';result.classList.remove('red','black','green');if(r.result!=null)result.classList.add(r.result==='0'||r.result==='00'?'green':reds.has(Number(r.result))?'red':'black')}
+  if(wheel)wheel.classList.toggle('spinning',r.phase==='SPINNING');
+  const grid=$('#rouletteGrid');
+  if(grid&&!grid.childElementCount){
+    grid.innerHTML=Array.from({length:36},(_,i)=>i+1).map(n=>'<button class="roulette-pocket '+(reds.has(n)?'red':'black')+'" data-roulette-number="'+n+'" style="grid-column:'+Math.ceil(n/3)+';grid-row:'+(3-((n-1)%3))+'" aria-label="Bet on '+n+'">'+n+'</button>').join('');
+  }
+  const betsHost=$('#rouletteBets');
+  if(betsHost)betsHost.innerHTML=bets.length?bets.map(b=>{const p=players.find(x=>x.id===b.playerId);const label=b.type==='number'?'NUMBER '+b.value:b.type.toUpperCase();return '<div class="roulette-bet-row"><span class="roulette-bet-dot '+(b.type==='red'?'red':b.type==='black'?'black':b.type==='number'?'number':'outside')+'"></span><div><b>'+esc(p?.name||'Player')+'</b><span>'+esc(label)+'</span></div><strong>'+Number(b.amount||0).toLocaleString()+' chips</strong></div>'}).join(''):'<p class="roulette-empty">No bets yet. Choose an outside bet or tap a number.</p>';
+  if($('#rouletteBetTotal'))$('#rouletteBetTotal').textContent=bets.reduce((sum,b)=>sum+Number(b.amount||0),0).toLocaleString()+' chips committed · '+bets.length+' bet'+(bets.length===1?'':'s');
+  const mine=mePlayer();$('#spinBtn').disabled=!mine?.host||r.phase!=='BETTING'||bets.length===0;
+}
 const pieces={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'};
 function renderChess(){const c=state.chess||{};$('#chessStatus').textContent=c.winners?.length?'GAME OVER':`Turn: ${c.turn==='w'?'White':'Black'}`;if(c.wagerPot)$('#chessStatus').textContent+=` · WAGER POT ${Number(c.wagerPot).toLocaleString()}`;if(!c.fen)return;const rows=[];for(const row of c.fen.split(' ')[0].split('/')){const out=[];for(const ch of row){if(/\d/.test(ch))for(let i=0;i<+ch;i++)out.push(null);else out.push(ch)}rows.push(out)}$('#chessGrid').innerHTML=rows.flatMap((row,r)=>row.map((piece,col)=>{const sq=String.fromCharCode(97+col)+(8-r);return `<div class="sq ${(r+col)%2?'dark':'light'} ${selectedChess===sq?'sel':''}" data-sq="${sq}">${piece?pieces[piece]:''}</div>`})).join('');$$('#chessGrid .sq').forEach(x=>x.onclick=()=>chessClick(x.dataset.sq))}
 function chessClick(sq){if(!selectedChess){selectedChess=sq;renderChess();return}const from=selectedChess;selectedChess=null;let promotion;if(from[1]==='7'&&sq[1]==='8'||from[1]==='2'&&sq[1]==='1')promotion='q';call('chessMove',{move:{from,to:sq,promotion}}).then(r=>{if(!r.ok)toast(r.error||'Illegal move')});renderChess()}
@@ -145,7 +168,7 @@ document.addEventListener('click',e=>{const b=e.target.closest('[data-bot]');if(
 $$('[data-action]').forEach(b=>b.onclick=()=>{let amount=Number($('#raiseAmount').value);call('pokerAction',{action:b.dataset.action,amount}).then(r=>{if(!r.ok)toast(r.error)})});
 $$('[data-bj]').forEach(b=>b.onclick=()=>call('blackjackAction',{action:b.dataset.bj}).then(r=>{if(!r.ok)toast(r.error)}));$('#bjBetBtn').onclick=()=>call('blackjackBet',{amount:Number($('#bjBet').value)}).then(r=>{if(!r.ok)toast(r.error)});
 $('#spinBtn').onclick=()=>call('rouletteSpin',{}).then(r=>{if(!r.ok)toast(r.error)});
-$$('.bet-chip').forEach(b=>b.onclick=()=>{if(b.id==='numberBet')return;const amount=Number($('#rouletteAmount').value||25);call('rouletteBet',{type:b.dataset.type,value:b.dataset.value||'',amount}).then(r=>{if(!r.ok)toast(r.error);else toast('Bet placed')})});$('#numberBet').onclick=()=>{const amount=Number($('#rouletteAmount').value||25),value=Number($('#rouletteNumber').value);if(!Number.isInteger(value)||value<0||value>36)return toast('Choose a number from 0 to 36.');call('rouletteBet',{type:'number',value,amount}).then(r=>{if(!r.ok)toast(r.error);else toast(`Bet on ${value} placed`)})};
+$$('.bet-chip').forEach(b=>b.onclick=()=>{if(b.id==='numberBet')return;const amount=Number($('#rouletteAmount').value||25);call('rouletteBet',{type:b.dataset.type,value:b.dataset.value||'',amount}).then(r=>{if(!r.ok)toast(r.error);else toast('Bet placed')})});$('#numberBet').onclick=()=>{const amount=Number($('#rouletteAmount').value||25),raw=$('#rouletteNumber').value.trim(),value=raw==='00'?'00':Number(raw);if(!(value==='00'||Number.isInteger(value)&&value>=0&&value<=36))return toast('Choose a number from 0 to 36, or 00.');call('rouletteBet',{type:'number',value,amount}).then(r=>{if(!r.ok)toast(r.error);else toast(`Bet on ${value} placed`)})};$('#rouletteNumber').max='36';$('#rouletteGrid').addEventListener('click',e=>{const b=e.target.closest('[data-roulette-number]');if(!b)return;$('#rouletteNumber').value=b.dataset.rouletteNumber;$('#numberBet').click()});document.querySelectorAll('[data-roulette-number]').forEach(b=>b.addEventListener('click',()=>{}));
 async function leave(){const r=await call('leaveRoom',{});if(!r.ok)return toast(r.error);localStorage.removeItem('gh_session');state=null;me=null;roomCode='';showScreen('home');renderAccount()}
 async function returnToRoom(){const r=await call('returnToLobby',{});if(!r.ok)return toast(r.error||'Could not return to the room.');showScreen('lobby');renderLobby()}$('#playAgainBtn').onclick=async()=>{const r=await call('playAgain',{});if(!r.ok)toast(r.error)};$('#quitGameBtn').onclick=returnToRoom;$('#leaveBtn').onclick=leave;$('#leaveLobbyBtn').onclick=leave;$('#copyRoom').onclick=()=>navigator.clipboard?.writeText(roomCode).then(()=>toast('Room code copied'));
 function chat(form,input){$(form).onsubmit=e=>{e.preventDefault();const v=$(input).value.trim();if(v)call('chat',{text:v});$(input).value=''}}chat('#chatForm','#chatInput');chat('#gameChatForm','#gameChatInput');
