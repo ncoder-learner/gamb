@@ -178,9 +178,66 @@ function showdown(room){
   for(const level of levels){const contributors=room.players.filter(p=>p.totalBet>=level);const pot=(level-prev)*contributors.length;const eligible=contributors.filter(p=>!p.folded);if(pot>0&&eligible.length){let best=null,winners=[];for(const p of eligible){const r=eval7([...p.hole,...room.poker.community]);if(!best||cmp(r,best)>0){best=r;winners=[p]}else if(cmp(r,best)===0)winners.push(p)}const share=Math.floor(pot/winners.length),rem=pot%winners.length;winners.forEach((p,i)=>{const pay=share+(i===0?rem:0);p.chips+=pay;payouts.set(p.id,(payouts.get(p.id)||0)+pay);details.push({id:p.id,amount:pay,hand:handName(best),pot})})}prev=level}
   room.poker.pot=0;room.poker.phase='HAND_COMPLETE';room.turnPlayerId=null;room.poker.winners=[...payouts.entries()].map(([id,amount])=>{const d=details.find(x=>x.id===id);return {id,amount,hand:d?.hand||'Winner'}});room.poker.showdown=room.players.filter(p=>p.hole.length).map(p=>{let hand='Folded';if(!p.folded){const r=eval7([...p.hole,...room.poker.community]);hand=handName(r)}return {id:p.id,name:p.name,cards:p.hole.map(cardText),folded:p.folded,hand}});room.players.forEach(p=>{if(p.accountId&&accounts[p.accountId]&&p.totalBet>0){const a=ensureAccount(accounts[p.accountId]);const pay=payouts.get(p.id)||0;recordGame(a,'poker',pay-p.totalBet,pay>0?'win':'loss',pay)} });saveAccounts();room.players.forEach(p=>{if(p.hole.length)p.lastAction=room.poker.winners.some(w=>w.id===p.id)?'WIN':'SHOWDOWN'});say(room,room.poker.winners.map(w=>`${room.players.find(p=>p.id===w.id)?.name} wins ${w.amount} (${w.hand})`).join(' • ')||'Showdown complete.');room.turnEndsAt=Date.now()+20000;room.timer=setTimeout(()=>nextHand(room),20000);broadcast(room)}
 function nextHand(room){if(!rooms.has(room.code))return;const n=room.players.filter(p=>p.chips>0&&(p.connected||p.bot)).length;if(n>=2){room.poker.dealerIndex=(room.poker.dealerIndex+1)%room.players.length;startPokerHand(room)}else{room.status='LOBBY';room.poker.phase='LOBBY';broadcast(room)}}
-function estimateStrength(p,room){if(!p.hole.length)return .1;const cards=[...p.hole,...room.poker.community];const r=room.poker.community.length?eval7(cards):[0,Math.max(rv(p.hole[0].r),rv(p.hole[1].r))];return Math.min(1,(r[0]*.10+(r[1]||5)/20))}
-function botTick(room){if(!rooms.has(room.code))return;if(room.game==='poker'&&room.turnPlayerId){const p=room.players.find(x=>x.id===room.turnPlayerId);if(p?.bot&&!p._botPending){p._botPending=true;setTimeout(()=>{p._botPending=false;if(room.turnPlayerId!==p.id)return;const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;const call=required(room,p),s=estimateStrength(p,room);let a='check',amt;const r=Math.random();if(call>0){if(s<cfg.tight*.28&&r>cfg.bluff)a='fold';else if(r<cfg.aggression&&p.chips+ p.bet>room.poker.highestBet+room.poker.minRaise){a='raise';amt=Math.min(p.bet+p.chips,room.poker.highestBet+room.poker.minRaise)}else a='call'}else{if(r<cfg.aggression*.35&&p.chips>room.poker.minRaise){a='raise';amt=Math.min(p.bet+p.chips,room.poker.highestBet+room.poker.minRaise)}else a='check'}pokerAction(room,p,a,amt)},900+crypto.randomInt(900))}}
-  if(room.game==='blackjack'&&room.turnPlayerId){const p=room.players.find(x=>x.id===room.turnPlayerId);if(p?.bot&&!p._botPending){p._botPending=true;setTimeout(()=>{p._botPending=false;const h=room.blackjack.hands[p.id];if(h&&!h.done)bjAction(room,p,bjValue(h.cards).total<17?'hit':'stand')},900+crypto.randomInt(700))}}
+function estimateEquity(p,room,trials=72){
+  const opponents=room.players.filter(q=>q.id!==p.id&&!q.folded&&!q.allIn&&(q.chips+q.bet>0)&&(q.connected||q.bot));
+  if(!p.hole.length||!opponents.length)return .5;
+  const board=room.poker.community.slice();
+  const known=new Set([...p.hole,...board].map(cardText));
+  const unseen=SUITS.flatMap(s=>RANKS.map(r=>({r,s}))).filter(c=>!known.has(cardText(c)));
+  let share=0;
+  for(let t=0;t<trials;t++){
+    const deck=unseen.slice();
+    const draw=()=>{const i=Math.floor(Math.random()*deck.length);return deck.splice(i,1)[0]};
+    const runout=board.slice();while(runout.length<5)runout.push(draw());
+    const hero=eval7([...p.hole,...runout]);
+    let best=hero,heroBest=true,ties=1;
+    for(const opp of opponents){
+      const score=eval7([draw(),draw(),...runout]);
+      const c=cmp(score,best);
+      if(c>0){best=score;heroBest=false;ties=1}
+      else if(c===0)ties++;
+    }
+    if(heroBest)share+=1/ties;
+  }
+  return share/trials;
+}
+function botTick(room){
+  if(!rooms.has(room.code))return;
+  if(room.game==='poker'&&room.turnPlayerId){
+    const p=room.players.find(x=>x.id===room.turnPlayerId);
+    if(p?.bot&&!p._botPending){
+      p._botPending=true;
+      setTimeout(()=>{
+        p._botPending=false;if(room.turnPlayerId!==p.id)return;
+        const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;
+        const call=required(room,p),equity=estimateEquity(p,room,72),pot=Math.max(1,room.poker.pot);
+        const potOdds=call/(pot+call),r=Math.random();
+        let action=call?'call':'check',amount;
+        const minTo=room.poker.highestBet+room.poker.minRaise;
+        const maxTo=p.bet+p.chips;
+        const canRaise=maxTo>=minTo&&p.chips>0;
+        const valueRaise=equity>=Math.max(.64,potOdds+.25);
+        const bluffRaise=equity>.24&&r<cfg.bluff*.16;
+        if(call>0){
+          if(equity<potOdds+.025&&r>cfg.bluff*.35)action='fold';
+          else if(canRaise&&valueRaise&&r<cfg.aggression*.7){action='raise';amount=Math.min(maxTo,room.poker.highestBet+room.poker.minRaise*(equity>.82?2:1))}
+          else if(canRaise&&equity>.48&&r<cfg.aggression*.12){action='raise';amount=minTo}
+          else action='call';
+        }else if(canRaise&&((equity>.66&&r<cfg.aggression*.58)||bluffRaise)){
+          action='raise';amount=Math.min(maxTo,room.poker.highestBet+room.poker.minRaise*(equity>.82?2:1));
+        }
+        if(action==='raise'&&(!Number.isFinite(amount)||amount<minTo||amount>maxTo))action=call?'call':'check';
+        pokerAction(room,p,action,amount);
+      },900+crypto.randomInt(900));
+    }
+  }
+  if(room.game==='blackjack'&&room.turnPlayerId){
+    const p=room.players.find(x=>x.id===room.turnPlayerId);
+    if(p?.bot&&!p._botPending){
+      p._botPending=true;
+      setTimeout(()=>{p._botPending=false;const h=room.blackjack.hands[p.id];if(h&&!h.done){const total=bjValue(h.cards).total;const soft=bjValue(h.cards).soft;const dealerUp=room.blackjack.dealer[0]?rv(room.blackjack.dealer[0].r):7;const action=total<12?'hit':total<17?(soft||dealerUp>=7?'hit':'stand'):total===17&&soft&&dealerUp>=9?'hit':'stand';bjAction(room,p,action)}},900+crypto.randomInt(700));
+    }
+  }
 }
 
 // Blackjack
