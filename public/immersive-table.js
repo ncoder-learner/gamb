@@ -9,15 +9,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   css.textContent = `
     .game-main{position:relative;isolation:isolate;min-height:760px!important}
     .immersive-scene{position:absolute;inset:0 0 92px;width:100%;height:calc(100% - 92px);min-height:600px;display:block;z-index:1;pointer-events:none}
-    .game-main>.board:not(.hidden){position:relative!important;z-index:0!important;background:transparent!important;border:0!important;padding:0!important;min-height:650px}
-    .game-main>.board:not(.hidden)>:not(.immersive-scene){visibility:hidden!important;pointer-events:none!important}
-    .game-main>.board:not(.hidden) .table-felt,.game-main>.board:not(.hidden) .bj-table{visibility:hidden!important}
+    .game-main.immersive-active>.board:not(.hidden){position:relative!important;z-index:0!important;background:transparent!important;border:0!important;padding:0!important;min-height:650px}
+    .game-main.immersive-active>.board:not(.hidden)>:not(.immersive-scene){visibility:hidden!important;pointer-events:none!important}
+    .game-main.immersive-active>.board:not(.hidden) .table-felt,.game-main.immersive-active>.board:not(.hidden) .bj-table{visibility:hidden!important}
     .game-main>.actionbar{position:relative;z-index:3;background:rgba(7,10,8,.94)!important;border:1px solid rgba(211,178,104,.28)!important;backdrop-filter:blur(18px);box-shadow:0 14px 40px #0009}
     .game-main>.actionbar .btn{pointer-events:auto}
     .immersive-hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;z-index:2;pointer-events:none;font:800 10px/1.4 'DM Sans',sans-serif;letter-spacing:.17em;color:#e5cc8d;text-shadow:0 2px 8px #000}
     .immersive-hud .sub{display:block;color:#a7b3a6;font-size:8px;letter-spacing:.2em;margin-top:4px}
     .immersive-hud .phase{border:1px solid #d3b16a66;border-radius:999px;background:#07150edb;padding:8px 12px}
-    @media(max-width:760px){.game-main{min-height:620px!important}.immersive-scene{min-height:500px}.game-main>.board:not(.hidden){min-height:540px}.immersive-hud{top:12px;left:12px;right:12px}.immersive-hud .sub{display:none}}
+    @media(max-width:760px){.game-main{min-height:620px!important}.immersive-scene{min-height:500px}.game-main.immersive-active>.board:not(.hidden){min-height:540px}.immersive-hud{top:12px;left:12px;right:12px}.immersive-hud .sub{display:none}}
   `;
   document.head.appendChild(css);
 
@@ -180,6 +180,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function syncScene(force=false){
     const pokerVisible=!document.querySelector('#pokerBoard')?.classList.contains('hidden');
     const bjVisible=!document.querySelector('#blackjackBoard')?.classList.contains('hidden');
+    const active=pokerVisible||bjVisible;root.classList.toggle('immersive-active',active);canvas.style.display=active?'block':'none';hud.style.display=active?'flex':'none';
+    if(!active)return;
     gameType=bjVisible?'blackjack':'poker';
     const phase=(document.querySelector('#streetChip')?.textContent||document.querySelector('#bjActions .turn-badge')?.textContent||'TABLE OPEN').trim();
     const phaseEl=document.querySelector('#scenePhase');if(phaseEl)phaseEl.textContent=phase;
