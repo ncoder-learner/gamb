@@ -190,7 +190,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const sig=gameType+'|'+phase+'|'+cards.map(c=>c.label+(c.back?'b':'f')).join(',');
     if(!force&&sig===signature&&seatSig===lastSeatSig)return;
     const seatsChanged=force||seatSig!==lastSeatSig;lastSeatSig=seatSig;signature=sig;
-    clearGroup(chipsGroup);if(seatsChanged||force)rebuildSeats();
+    clearGroup(chipsGroup);rebuildSeats();
     clearGroup(cardGroup);
     if(gameType==='poker'){
       const community=getCards('#community');community.forEach((c,i)=>addCard(c.label,-1.24+i*.62,-.35,(i-2)*.018,c.back));
