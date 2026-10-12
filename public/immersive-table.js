@@ -111,6 +111,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const chipsGroup=new THREE.Group();scene.add(chipsGroup);
   const cardGroup=new THREE.Group();scene.add(cardGroup);
+  const cardFlights=[];
+  let previousCardKeys=new Set();
   const seatGroup=new THREE.Group();scene.add(seatGroup);
   const dealerGroup=new THREE.Group();scene.add(dealerGroup);
   const seatArmRefs=new Map();
