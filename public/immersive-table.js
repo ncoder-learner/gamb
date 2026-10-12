@@ -157,8 +157,18 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   }
   function addCard(label,x,z,rot=0,back=false){
     const front=cardTexture(label||'?',back), side=mat('#e0d7c4',.48);
-    const m=new THREE.Mesh(cardGeo,[side,new THREE.MeshBasicMaterial({map:front})]);
-    m.rotation.x=-Math.PI/2;m.rotation.z=rot;m.position.set(x,.22,z);m.castShadow=true;m.receiveShadow=true;cardGroup.add(m);return m;
+    // Keep the beveled card body and use a separate plane for the printed face.
+    // ExtrudeGeometry's default UVs are world-unit based, which can crop a CanvasTexture.
+    const card=new THREE.Group();
+    card.position.set(x,.22,z);card.rotation.z=rot;
+    const body=new THREE.Mesh(cardGeo,side);
+    body.rotation.x=-Math.PI/2;body.castShadow=true;body.receiveShadow=true;card.add(body);
+    const face=new THREE.Mesh(
+      new THREE.PlaneGeometry(.575,.835),
+      new THREE.MeshBasicMaterial({map:front,side:THREE.DoubleSide,toneMapped:false})
+    );
+    face.rotation.x=-Math.PI/2;face.position.y=.029;face.receiveShadow=true;card.add(face);
+    cardGroup.add(card);return card;
   }
   function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
   function labelSprite(text, color='#f4e7c2'){
