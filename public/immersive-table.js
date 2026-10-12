@@ -22,6 +22,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     .game-main.immersive-active .showdown.visible{position:absolute!important;z-index:11!important;left:50%!important;top:66%!important;transform:translateX(-50%)!important;width:min(680px,94%)!important;max-height:17%!important;overflow:auto!important;padding:8px 10px!important;border:1px solid #d3b16a66!important;border-radius:12px!important;background:rgba(4,10,7,.91)!important;color:#eee6d5!important;pointer-events:auto!important}
     .game-main.immersive-active .post-game:not(.hidden){position:absolute!important;z-index:15!important;left:50%!important;top:88%!important;transform:translate(-50%,-50%)!important;display:flex!important;gap:8px!important;visibility:visible!important}
     .game-main.immersive-active .post-game:not(.hidden) .btn{white-space:nowrap;pointer-events:auto!important}
+    .game-main.immersive-active #pot{top:33%!important;left:50%!important;z-index:4!important;min-width:82px;padding:4px 10px;border:1px solid rgba(196,159,86,.35);border-radius:999px;background:rgba(4,13,9,.72);box-shadow:0 5px 18px #0005;font-size:8px!important;line-height:1.1;letter-spacing:.16em!important;pointer-events:none}
+    .game-main.immersive-active #pot b{font-size:15px!important;line-height:1.1;margin-top:2px}
+    .game-main.immersive-active #streetChip{top:27%!important;z-index:4!important;padding:5px 10px;border-radius:999px;background:rgba(4,13,9,.58);border:1px solid rgba(196,159,86,.25)}
+    .game-main.immersive-active #blackjackBoard{min-height:650px!important}
+    .game-main.immersive-active #bjHands{display:none!important}
+    .game-main.immersive-active .dealer-zone{visibility:hidden!important}
+    .game-main.immersive-active #dealerCards{visibility:hidden!important}
     @media(max-width:760px){.game-main.immersive-active .winner{top:48%!important;max-height:32%!important}.game-main.immersive-active .showdown.visible{top:67%!important;max-height:16%!important}.game-main.immersive-active .post-game:not(.hidden){top:88%!important}.game-main.immersive-active .winner-card{padding:5px 7px;font-size:10px}}
     .game-main>.actionbar{position:relative;z-index:3;background:rgba(7,10,8,.94)!important;border:1px solid rgba(211,178,104,.28)!important;backdrop-filter:blur(18px);box-shadow:0 14px 40px #0009}
     .game-main>.actionbar .btn{pointer-events:auto}
@@ -63,7 +70,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const rim = new THREE.PointLight(0xf1bf65, 46, 15); rim.position.set(0,4,-6); scene.add(rim);
 
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-  const feltCanvas=document.createElement('canvas');feltCanvas.width=512;feltCanvas.height=512;const feltCtx=feltCanvas.getContext('2d');feltCtx.fillStyle='#075336';feltCtx.fillRect(0,0,512,512);let feltSeed=82417;for(let i=0;i<18000;i++){feltSeed=(feltSeed*1664525+1013904223)>>>0;const v= feltSeed%100;feltCtx.fillStyle=v<50?'rgba(210,231,207,.035)':'rgba(0,0,0,.045)';const x=feltSeed%512;feltSeed=(feltSeed*1664525+1013904223)>>>0;const y=feltSeed%512;feltCtx.fillRect(x,y,1+(v%2),1)}const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(2,2);feltTexture.colorSpace=THREE.SRGBColorSpace;const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,roughness:1,metalness:0});
+  const feltCanvas=document.createElement('canvas');feltCanvas.width=1024;feltCanvas.height=1024;const feltCtx=feltCanvas.getContext('2d');
+  const feltGradient=feltCtx.createRadialGradient(512,480,90,512,512,720);feltGradient.addColorStop(0,'#0b6844');feltGradient.addColorStop(.62,'#075237');feltGradient.addColorStop(1,'#032c1c');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,1024,1024);
+  let feltSeed=82417;const rand=()=>{feltSeed=(feltSeed*1664525+1013904223)>>>0;return feltSeed/4294967296};
+  for(let i=0;i<54000;i++){const x=rand()*1024,y=rand()*1024,a=.018+rand()*.055;feltCtx.strokeStyle=rand()>.5?`rgba(218,231,207,${a})`:`rgba(0,0,0,${a*1.3})`;feltCtx.lineWidth=.45+rand()*.8;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*5,y+1+rand()*3);feltCtx.stroke()}
+  feltCtx.globalAlpha=.14;feltCtx.strokeStyle='#b7c8a8';feltCtx.lineWidth=1;for(let y=0;y<1024;y+=6){feltCtx.beginPath();feltCtx.moveTo(0,y);feltCtx.lineTo(1024,y);feltCtx.stroke()}feltCtx.globalAlpha=1;
+  const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(1.35,1.35);feltTexture.colorSpace=THREE.SRGBColorSpace;feltTexture.anisotropy=8;
+  const feltNormalCanvas=document.createElement('canvas');feltNormalCanvas.width=256;feltNormalCanvas.height=256;const fn= feltNormalCanvas.getContext('2d');fn.fillStyle='rgb(128,128,255)';fn.fillRect(0,0,256,256);let ns=44821;for(let i=0;i<12000;i++){ns=(ns*1664525+1013904223)>>>0;const x=ns%256;ns=(ns*1664525+1013904223)>>>0;const y=ns%256;const v=112+(ns%32);fn.fillStyle=`rgb(${v},${v},255)`;fn.fillRect(x,y,1,1)}const feltNormal=new THREE.CanvasTexture(feltNormalCanvas);feltNormal.wrapS=feltNormal.wrapT=THREE.RepeatWrapping;feltNormal.repeat.set(2,2);
+  const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,normalMap:feltNormal,normalScale:new THREE.Vector2(.28,.28),roughness:.96,metalness:0});
   const railMat=mat('#211c14',.34,.16), goldMat=mat('#b88d43',.27,.58), blackMat=mat('#080907',.45,.08);
   const table = new THREE.Group(); scene.add(table);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1,1,1.0,96),mat('#171914',.42,.12));
@@ -78,6 +92,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   goldTrim.rotation.x=Math.PI/2; goldTrim.scale.set(4.81,2.84,1); goldTrim.position.y=.14; table.add(goldTrim);
   const innerTrim = new THREE.Mesh(new THREE.TorusGeometry(1,.012,8,120),goldMat);
   innerTrim.rotation.x=Math.PI/2; innerTrim.scale.set(4.36,2.39,1); innerTrim.position.y=.125; table.add(innerTrim);
+  const bettingArc=new THREE.Mesh(new THREE.TorusGeometry(1,.009,6,128),mat('#9c7738',.48,.38));bettingArc.rotation.x=Math.PI/2;bettingArc.scale.set(3.28,1.72,1);bettingArc.position.set(0,.121,-.03);table.add(bettingArc);
+  const logoCanvas=document.createElement('canvas');logoCanvas.width=512;logoCanvas.height=128;const logoCtx=logoCanvas.getContext('2d');logoCtx.clearRect(0,0,512,128);logoCtx.textAlign='center';logoCtx.textBaseline='middle';logoCtx.font='700 34px Georgia';logoCtx.fillStyle='rgba(214,181,111,.32)';logoCtx.fillText('GAME HUNK  •  PRIVATE CLUB',256,64);const logoTexture=new THREE.CanvasTexture(logoCanvas);logoTexture.colorSpace=THREE.SRGBColorSpace;const tableLogo=new THREE.Mesh(new THREE.PlaneGeometry(2.35,.42),new THREE.MeshBasicMaterial({map:logoTexture,transparent:true,depthWrite:false,side:THREE.DoubleSide}));tableLogo.rotation.x=-Math.PI/2;tableLogo.position.set(0,.122,-1.72);table.add(tableLogo);
 
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200),mat('#090b09',.95));
   floor.rotation.x=-Math.PI/2; floor.position.y=-1.15; floor.receiveShadow=true; scene.add(floor);
@@ -178,8 +194,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function cardTexture(label,back=false){
     const c=document.createElement('canvas');c.width=256;c.height=360;const x=c.getContext('2d');
     x.fillStyle=back?'#f4ead7':'#fffdf5';x.fillRect(0,0,256,360);
-    if(back){x.fillStyle='#182c24';x.fillRect(12,12,232,336);x.strokeStyle='#d1ad61';x.lineWidth=5;x.strokeRect(22,22,212,316);x.strokeStyle='#728d70';x.lineWidth=2;
-      for(let y=35;y<325;y+=18){x.beginPath();x.moveTo(30,y);x.lineTo(226,y+12);x.stroke()}x.fillStyle='#e5c779';x.font='bold 34px Georgia';x.textAlign='center';x.fillText('GH',128,188);
+    if(back){x.fillStyle='#10251d';x.fillRect(12,12,232,336);x.strokeStyle='#c8a45e';x.lineWidth=5;x.strokeRect(22,22,212,316);x.strokeStyle='rgba(207,177,111,.8)';x.lineWidth=1.6;
+      for(let y=28;y<332;y+=16){for(let xx=28;xx<236;xx+=16){x.beginPath();x.moveTo(xx,y+8);x.lineTo(xx+8,y);x.lineTo(xx+16,y+8);x.lineTo(xx+8,y+16);x.closePath();x.stroke()}}x.strokeStyle='#d8bd7a';x.lineWidth=3;x.strokeRect(75,137,106,86);x.strokeRect(83,145,90,70);x.fillStyle='#e7d29a';x.font='bold 34px Georgia';x.textAlign='center';x.fillText('GH',128,188);
     }else{
       const red=/[♥♦]/.test(label);const ink=red?'#b72e30':'#171b1a';x.fillStyle=ink;x.font='bold 76px Georgia';x.textAlign='left';x.fillText(label,18,76);
       const suitChar=label.slice(-1);x.font='bold 88px Georgia';x.fillText(suitChar,18,157);
@@ -365,21 +381,29 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       });
       const potValue=Number((document.querySelector('#pot b')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
       const potCount=potValue>0?Math.max(1,Math.min(10,Math.ceil(Math.log10(potValue+1)*2))):0;
-      for(let i=0;i<potCount;i++)makeChip(-.22+(i%3)*.22,.17+Math.floor(i/3)*.058,-.92,i%5);
+      for(let i=0;i<potCount;i++)makeChip(-1.38+(i%3)*.19,.17+Math.floor(i/3)*.058,-.72,i%5);
       previousCardKeys=nextCardKeys;
     }else{
       const dealer=getCards('#dealerCards');
       dealer.forEach((c,i)=>placeCard('dealer:'+i+':'+c.label,c.label,(i-(dealer.length-1)/2)*.82,-1.25,(i-(dealer.length-1)/2)*.025,c.back));
-      const hands=[...document.querySelectorAll('#bjHands .bj-hand')];
+      const hands=[...document.querySelectorAll('#bjHands .bj-hand')],heroIndex=Math.max(0,hands.findIndex(el=>el.classList.contains('mine'))),seatCount=Math.max(1,hands.length);
       hands.forEach((el,idx)=>{
-        const isMine=el.querySelector('b')?.textContent?.trim()===(document.querySelector('#dealerName')?.textContent||'__no_dealer__');
+        const isMine=el.classList.contains('mine');
+        const relative=(idx-heroIndex+seatCount)%seatCount;
+        const angle=relative/seatCount*Math.PI*2;
+        const baseX=isMine?0:Math.sin(angle)*3.05;
+        const baseZ=isMine?1.35:Math.cos(angle)*1.48;
         const cardsInHand=getCards('#bjHands .bj-hand:nth-child('+(idx+1)+') .cards');
-        const baseX=(idx-(hands.length-1)/2)*1.65;
-        cardsInHand.forEach((c,i)=>placeCard('bj:'+idx+':'+i+':'+c.label,c.label,baseX+(i-(cardsInHand.length-1)/2)*.78,.78+(idx%2)*.18,(i-(cardsInHand.length-1)/2)*.025,c.back));
+        const cardsCenter=baseX+(isMine?0:0);
+        cardsInHand.forEach((c,i)=>placeCard('bj:'+idx+':'+i+':'+c.label,c.label,cardsCenter+(i-(cardsInHand.length-1)/2)*.76,baseZ,(i-(cardsInHand.length-1)/2)*.025,c.back));
+        const title=el.querySelector('b')?.textContent?.trim()||'PLAYER';
+        const total=el.querySelector('div:nth-of-type(2)')?.textContent?.trim()||'';
+        const label=labelSprite((isMine?'YOU · ': '')+title.replace(/🤖/g,'').trim()+(total?' · '+total:''),isMine?'#ffdc8a':'#f4e7c2');
+        label.position.set(baseX,.83,baseZ+(isMine?.43:(baseZ>0?.48:-.35)));label.scale.set(isMine?1.8:1.55,.38,1);seatGroup.add(label);
       });
       previousCardKeys=nextCardKeys;
       const potValue=Number((document.querySelector('#bjActions .bj-bet-value')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
-      for(let i=0;i<Math.min(8,Math.ceil(potValue/100));i++)makeChip(-.28+(i%4)*.18,.17+Math.floor(i/4)*.058,-.55,i%5);
+      for(let i=0;i<Math.min(8,Math.ceil(potValue/100));i++)makeChip(-1.12+(i%4)*.17,.17+Math.floor(i/4)*.058,-.7,i%5);
     }
   }
 
