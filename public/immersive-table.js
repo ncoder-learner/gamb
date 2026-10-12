@@ -79,14 +79,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const feltNormalCanvas=document.createElement('canvas');feltNormalCanvas.width=256;feltNormalCanvas.height=256;const fn= feltNormalCanvas.getContext('2d');fn.fillStyle='rgb(128,128,255)';fn.fillRect(0,0,256,256);let ns=44821;for(let i=0;i<12000;i++){ns=(ns*1664525+1013904223)>>>0;const x=ns%256;ns=(ns*1664525+1013904223)>>>0;const y=ns%256;const v=112+(ns%32);fn.fillStyle=`rgb(${v},${v},255)`;fn.fillRect(x,y,1,1)}const feltNormal=new THREE.CanvasTexture(feltNormalCanvas);feltNormal.wrapS=feltNormal.wrapT=THREE.RepeatWrapping;feltNormal.repeat.set(2,2);
   const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,normalMap:feltNormal,normalScale:new THREE.Vector2(.28,.28),roughness:.96,metalness:0});
   // Optional CC0 Stretch Poplin PBR maps from Poly Haven provide actual woven-fiber detail; procedural felt stays as the offline fallback.
-  loadPolyHaven('stretch_poplin','diff',t=>{feltMat.map=t;feltMat.color.set('#5b9369');feltMat.needsUpdate=true},4,4);
-  loadPolyHaven('stretch_poplin','nor_gl',t=>{feltMat.normalMap=t;feltMat.normalScale=new THREE.Vector2(.34,.34);feltMat.needsUpdate=true},4,4);
-  loadPolyHaven('stretch_poplin','rough',t=>{feltMat.roughnessMap=t;feltMat.needsUpdate=true},4,4);
   const railMat=mat('#ffffff',.34,.16), goldMat=mat('#b88d43',.27,.58), blackMat=mat('#080907',.45,.08);
   // CC0 PBR surface maps from Poly Haven: wood_table_001 for the rail and wood_floor_02 for the room floor.
   // Procedural felt remains the fallback, so the table still renders if the asset CDN is unavailable.
   const pbrLoader=new THREE.TextureLoader();pbrLoader.setCrossOrigin('anonymous');
   function loadPolyHaven(asset,mapName,onLoad,repeatX=2,repeatY=1){const url=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/${asset}/${asset}_${mapName}_1k.jpg`;pbrLoader.load(url,tex=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatX,repeatY);tex.anisotropy=8;if(mapName==='diff')tex.colorSpace=THREE.SRGBColorSpace;onLoad(tex)},undefined,()=>{});}
+
+  loadPolyHaven('stretch_poplin','diff',t=>{feltMat.map=t;feltMat.color.set('#5b9369');feltMat.needsUpdate=true},4,4);
+  loadPolyHaven('stretch_poplin','nor_gl',t=>{feltMat.normalMap=t;feltMat.normalScale=new THREE.Vector2(.34,.34);feltMat.needsUpdate=true},4,4);
+  loadPolyHaven('stretch_poplin','rough',t=>{feltMat.roughnessMap=t;feltMat.needsUpdate=true},4,4);
   loadPolyHaven('wood_table_001','diff',t=>{railMat.map=t;railMat.color.set('#ffffff');railMat.needsUpdate=true},2,1);
   loadPolyHaven('wood_table_001','nor_gl',t=>{railMat.normalMap=t;railMat.normalScale=new THREE.Vector2(.24,.24);railMat.needsUpdate=true},2,1);
   loadPolyHaven('wood_table_001','rough',t=>{railMat.roughnessMap=t;railMat.needsUpdate=true},2,1);
