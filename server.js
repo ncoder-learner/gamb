@@ -324,6 +324,6 @@ io.on('connection',socket=>{
 });
 
 // Expire stale invitations and destroy abandoned rooms after a short reconnect grace period.
-setInterval(()=>{const now=Date.now();for(const room of [...rooms.values()]){room.joinRequests=(room.joinRequests||[]).filter(r=>now-r.at<90000&&io.sockets.sockets.has(r.socketId));const hasHuman=room.players.some(p=>!p.bot&&p.connected&&p.socketId&&io.sockets.sockets.has(p.socketId));if(hasHuman){room.abandonedAt=null;continue}if(!room.abandonedAt)room.abandonedAt=Math.max(now-30000,...room.players.map(p=>p.disconnectedAt||now));const grace=room.status==='LOBBY'?120000:300000;if(now-room.abandonedAt>=grace){for(const p of [...room.players])removePlayer(room,p);rooms.delete(room.code)}}},30000).unref?.();
+setInterval(()=>{const now=Date.now();for(const room of [...rooms.values()]){room.joinRequests=(room.joinRequests||[]).filter(r=>now-r.at<90000&&io.sockets.sockets.has(r.socketId));const hasHuman=room.players.some(p=>!p.bot&&p.connected&&p.socketId&&io.sockets.sockets.has(p.socketId));if(hasHuman){room.abandonedAt=null;continue}const grace=room.status==='LOBBY'?120000:300000;if(!room.abandonedAt){const times=room.players.filter(p=>!p.bot&&Number.isFinite(p.disconnectedAt)).map(p=>p.disconnectedAt);room.abandonedAt=times.length?Math.max(...times):now-grace}if(now-room.abandonedAt>=grace){for(const p of [...room.players])removePlayer(room,p);rooms.delete(room.code)}}},30000).unref?.();
 
 server.listen(PORT,'0.0.0.0',()=>console.log(`Game Hunk server listening on ${PORT}`));
