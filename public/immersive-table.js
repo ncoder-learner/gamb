@@ -235,7 +235,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   }
   function rebuildSeats(){
     clearGroup(seatGroup);seatArmRefs.clear();
-    const nodes=[...document.querySelectorAll('#seats .seat')];
+    const nodes=gameType==='poker'?[...document.querySelectorAll('#seats .seat')]:[];
     const skins=['#c58d6d','#8e5d43','#e0b18b','#ad7659','#d39a73','#77513e','#edc5a0','#9b684d'];
     const jackets=['#202c2a','#312d29','#283441','#3b2926','#26352d','#332d3c','#222927','#40332a'];
     const hairs=['#181513','#35271e','#101314','#3a2419','#1b1b1b','#513a2b','#24201b','#161616'];
@@ -399,10 +399,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         const title=el.querySelector('b')?.textContent?.trim()||'PLAYER';
         const total=el.querySelector('div:nth-of-type(2)')?.textContent?.trim()||'';
         const label=labelSprite((isMine?'YOU · ': '')+title.replace(/🤖/g,'').trim()+(total?' · '+total:''),isMine?'#ffdc8a':'#f4e7c2');
-        label.position.set(baseX,.83,baseZ+(isMine?.43:(baseZ>0?.48:-.35)));label.scale.set(isMine?1.8:1.55,.38,1);seatGroup.add(label);
+        label.position.set(baseX,.83,baseZ+(isMine ? 0.43 : (baseZ>0 ? 0.48 : -0.35)));label.scale.set(isMine?1.8:1.55,.38,1);seatGroup.add(label);
       });
       previousCardKeys=nextCardKeys;
-      const potValue=Number((document.querySelector('#bjActions .bj-bet-value')?.textContent||'0').replace(/[^0-9.-]/g,''))||0;
+      const potValue=[...document.querySelectorAll('#bjHands .bj-hand')].reduce((sum,el)=>{const m=el.textContent.match(/\bbet\s+([\d,]+)/i);return sum+(m?Number(m[1].replace(/,/g,''))||0:0)},0);
       for(let i=0;i<Math.min(8,Math.ceil(potValue/100));i++)makeChip(-1.12+(i%4)*.17,.17+Math.floor(i/4)*.058,-.7,i%5);
     }
   }
