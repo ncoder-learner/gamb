@@ -12,6 +12,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     .game-main.immersive-active>.board:not(.hidden){position:relative!important;z-index:2!important;background:transparent!important;border:0!important;padding:0!important;min-height:650px}
     .game-main.immersive-active>.poker-board .poker-stage{background:transparent!important;perspective:none!important}.game-main.immersive-active .table-shadow,.game-main.immersive-active .casino-ambient{display:none!important}.game-main.immersive-active .table-felt{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:none!important}.game-main.immersive-active .table-felt:after{display:none!important}.game-main.immersive-active .bj-table{background:transparent!important;border:0!important;box-shadow:none!important}.game-main.immersive-active .community .card,.game-main.immersive-active .my-hand .card,.game-main.immersive-active .seat .hole .card,.game-main.immersive-active #dealerCards .card,.game-main.immersive-active #bjHands .card{visibility:hidden!important}
     .game-main.immersive-active>.board:not(.hidden) .table-felt,.game-main.immersive-active>.board:not(.hidden) .bj-table{visibility:hidden!important}
+    .game-main.immersive-active .hero-hand,.game-main.immersive-active .winner,.game-main.immersive-active .winner *,.game-main.immersive-active .showdown,.game-main.immersive-active .showdown *,.game-main.immersive-active .post-game,.game-main.immersive-active .post-game *,.game-main.immersive-active .street-chip,.game-main.immersive-active .pot,.game-main.immersive-active .dealer-badge,.game-main.immersive-active .felt-action{visibility:visible!important}
+    .game-main.immersive-active .winner{position:absolute!important;z-index:12!important;top:47%!important;left:50%!important;transform:translate(-50%,-50%)!important;width:min(520px,92%)!important;max-height:34%!important;overflow:auto!important;text-align:center!important;pointer-events:none!important}
+    .game-main.immersive-active .result-banner{display:flex;flex-direction:column;align-items:center;gap:5px;margin:0 auto 8px;padding:12px 18px;border:1px solid rgba(224,192,117,.65);border-radius:14px;background:rgba(5,12,8,.94);box-shadow:0 10px 36px #0009;color:#f7f0df;letter-spacing:.04em}
+    .game-main.immersive-active .result-banner strong{font-size:clamp(16px,2.2vw,25px);letter-spacing:.12em;color:#f3d58f}
+    .game-main.immersive-active .result-banner span{font-size:12px;color:#d3d9ce}
+    .game-main.immersive-active .result-banner.you-lost strong{color:#f0b4a6}
+    .game-main.immersive-active .winner-card{display:inline-flex;flex-direction:column;gap:3px;margin:3px;padding:8px 11px;border:1px solid #d3b16a55;border-radius:10px;background:#07120ee8;color:#eee6d5;font-size:11px}
+    .game-main.immersive-active .showdown.visible{position:absolute!important;z-index:11!important;left:50%!important;top:66%!important;transform:translateX(-50%)!important;width:min(680px,94%)!important;max-height:17%!important;overflow:auto!important;padding:8px 10px!important;border:1px solid #d3b16a66!important;border-radius:12px!important;background:rgba(4,10,7,.91)!important;color:#eee6d5!important;pointer-events:auto!important}
+    .game-main.immersive-active .post-game:not(.hidden){position:absolute!important;z-index:15!important;left:50%!important;top:88%!important;transform:translate(-50%,-50%)!important;display:flex!important;gap:8px!important;visibility:visible!important}
+    .game-main.immersive-active .post-game:not(.hidden) .btn{white-space:nowrap;pointer-events:auto!important}
+    @media(max-width:760px){.game-main.immersive-active .winner{top:48%!important;max-height:32%!important}.game-main.immersive-active .showdown.visible{top:67%!important;max-height:16%!important}.game-main.immersive-active .post-game:not(.hidden){top:88%!important}.game-main.immersive-active .winner-card{padding:5px 7px;font-size:10px}}
     .game-main>.actionbar{position:relative;z-index:3;background:rgba(7,10,8,.94)!important;border:1px solid rgba(211,178,104,.28)!important;backdrop-filter:blur(18px);box-shadow:0 14px 40px #0009}
     .game-main>.actionbar .btn{pointer-events:auto}
     .immersive-hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;z-index:2;pointer-events:none;font:800 10px/1.4 'DM Sans',sans-serif;letter-spacing:.17em;color:#e5cc8d;text-shadow:0 2px 8px #000}
@@ -41,9 +52,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
-  const camera = new THREE.PerspectiveCamera(51, 1, .1, 70);
-  camera.position.set(0, 1.72, 4.05);
-  camera.lookAt(0, .12, .65);
+  const camera = new THREE.PerspectiveCamera(58, 1, .1, 70);
+  camera.position.set(0, 2.15, 6.25);
+  camera.lookAt(0, .12, .05);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
   const key = new THREE.SpotLight(0xffe4ad, 190, 32, Math.PI/4.2, .5, 1.3);
@@ -334,6 +345,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const seatsChanged=force||seatSig!==lastSeatSig;lastSeatSig=seatSig;signature=sig;
     clearGroup(chipsGroup);rebuildSeats();
     clearGroup(cardGroup);
+    cardFlights.length=0;
     const nextCardKeys=new Set();
     const placeCard=(key,label,x,z,rot=0,back=false)=>{
       nextCardKeys.add(key);
@@ -372,7 +384,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   }
 
   function resize(){
-    const r=root.getBoundingClientRect(),w=Math.max(320,r.width),h=Math.max(500,Math.min(790,r.height-80||680));
+    const r=root.getBoundingClientRect(),w=Math.max(320,r.width),h=Math.max(480,Math.min(720,r.height-80||620));
     renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
     canvas.style.width='100%';canvas.style.height=h+'px';
   }
@@ -398,8 +410,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       if(p>=1)cardFlights.splice(i,1);
     }
     camera.position.x=Math.sin(t*.12)*.025;
-    camera.position.y=1.72+Math.sin(t*.17)*.004;
-    camera.lookAt(0,.12,.65);
+    camera.position.y=2.15+Math.sin(t*.17)*.004;
+    camera.lookAt(0,.12,.05);
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
       const reach=p<.48?p/.48:1-(p-.48)/.52;
