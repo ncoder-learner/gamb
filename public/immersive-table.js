@@ -78,7 +78,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(1.35,1.35);feltTexture.colorSpace=THREE.SRGBColorSpace;feltTexture.anisotropy=8;
   const feltNormalCanvas=document.createElement('canvas');feltNormalCanvas.width=256;feltNormalCanvas.height=256;const fn= feltNormalCanvas.getContext('2d');fn.fillStyle='rgb(128,128,255)';fn.fillRect(0,0,256,256);let ns=44821;for(let i=0;i<12000;i++){ns=(ns*1664525+1013904223)>>>0;const x=ns%256;ns=(ns*1664525+1013904223)>>>0;const y=ns%256;const v=112+(ns%32);fn.fillStyle=`rgb(${v},${v},255)`;fn.fillRect(x,y,1,1)}const feltNormal=new THREE.CanvasTexture(feltNormalCanvas);feltNormal.wrapS=feltNormal.wrapT=THREE.RepeatWrapping;feltNormal.repeat.set(2,2);
   const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,normalMap:feltNormal,normalScale:new THREE.Vector2(.28,.28),roughness:.96,metalness:0});
-  const railMat=mat('#211c14',.34,.16), goldMat=mat('#b88d43',.27,.58), blackMat=mat('#080907',.45,.08);
+  const railMat=mat('#ffffff',.34,.16), goldMat=mat('#b88d43',.27,.58), blackMat=mat('#080907',.45,.08);
+  // CC0 PBR surface maps from Poly Haven: wood_table_001 for the rail and wood_floor_02 for the room floor.
+  // Procedural felt remains the fallback, so the table still renders if the asset CDN is unavailable.
+  const pbrLoader=new THREE.TextureLoader();pbrLoader.setCrossOrigin('anonymous');
+  function loadPolyHaven(asset,mapName,onLoad,repeatX=2,repeatY=1){const url=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/${asset}/${asset}_${mapName}_1k.jpg`;pbrLoader.load(url,tex=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatX,repeatY);tex.anisotropy=8;if(mapName==='diff')tex.colorSpace=THREE.SRGBColorSpace;onLoad(tex)},undefined,()=>{});}
+  loadPolyHaven('wood_table_001','diff',t=>{railMat.map=t;railMat.color.set('#ffffff');railMat.needsUpdate=true},2,1);
+  loadPolyHaven('wood_table_001','nor_gl',t=>{railMat.normalMap=t;railMat.normalScale=new THREE.Vector2(.24,.24);railMat.needsUpdate=true},2,1);
+  loadPolyHaven('wood_table_001','rough',t=>{railMat.roughnessMap=t;railMat.needsUpdate=true},2,1);
   const table = new THREE.Group(); scene.add(table);
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1,1,1.0,96),mat('#171914',.42,.12));
   base.scale.set(4.75,1,2.8); base.position.y=-.58; base.castShadow=true; base.receiveShadow=true; table.add(base);
@@ -95,7 +102,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const bettingArc=new THREE.Mesh(new THREE.TorusGeometry(1,.009,6,128),mat('#9c7738',.48,.38));bettingArc.rotation.x=Math.PI/2;bettingArc.scale.set(3.28,1.72,1);bettingArc.position.set(0,.121,-.03);table.add(bettingArc);
   const logoCanvas=document.createElement('canvas');logoCanvas.width=512;logoCanvas.height=128;const logoCtx=logoCanvas.getContext('2d');logoCtx.clearRect(0,0,512,128);logoCtx.textAlign='center';logoCtx.textBaseline='middle';logoCtx.font='700 34px Georgia';logoCtx.fillStyle='rgba(214,181,111,.32)';logoCtx.fillText('GAME HUNK  •  PRIVATE CLUB',256,64);const logoTexture=new THREE.CanvasTexture(logoCanvas);logoTexture.colorSpace=THREE.SRGBColorSpace;const tableLogo=new THREE.Mesh(new THREE.PlaneGeometry(2.35,.42),new THREE.MeshBasicMaterial({map:logoTexture,transparent:true,depthWrite:false,side:THREE.DoubleSide}));tableLogo.rotation.x=-Math.PI/2;tableLogo.position.set(0,.122,-1.72);table.add(tableLogo);
 
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200),mat('#090b09',.95));
+  const floorMat=mat('#17130e',.9);loadPolyHaven('wood_floor_02','diff',t=>{floorMat.map=t;floorMat.needsUpdate=true},8,8);loadPolyHaven('wood_floor_02','nor_gl',t=>{floorMat.normalMap=t;floorMat.normalScale=new THREE.Vector2(.18,.18);floorMat.needsUpdate=true},8,8);loadPolyHaven('wood_floor_02','rough',t=>{floorMat.roughnessMap=t;floorMat.needsUpdate=true},8,8);
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(200,200),floorMat);
   floor.rotation.x=-Math.PI/2; floor.position.y=-1.15; floor.receiveShadow=true; scene.add(floor);
   // Build a real room around the table instead of leaving the scene in a black void.
   const backWall=new THREE.Mesh(new THREE.PlaneGeometry(18,7),mat('#171713',.88));
@@ -231,7 +239,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');
     x.fillStyle='rgba(8,12,9,.88)';x.strokeStyle='rgba(201,168,94,.72)';x.lineWidth=4;
     x.beginPath();x.roundRect(8,8,496,112,24);x.fill();x.stroke();x.fillStyle=color;x.font='bold 36px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText(String(text).slice(0,24),256,64);
-    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:false}));sp.scale.set(1.65,.42,1);return sp;
+    const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:true,depthWrite:false}));sp.scale.set(1.65,.42,1);return sp;
   }
   function rebuildSeats(){
     clearGroup(seatGroup);seatArmRefs.clear();
@@ -252,7 +260,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       }
       if(!isMine){
         const lab=labelSprite((el.querySelector('.seat-name')?.textContent||'PLAYER').trim(),active?'#ffdb84':'#f4e7c2');
-        lab.position.set(x,1.48,z+(z>0?.56:-.5));seatGroup.add(lab);
+        lab.position.set(x,1.38,z+(z>0?-.62:-.5));seatGroup.add(lab);
       }
       if(!isMine){
         const avatar=new THREE.Group();avatar.position.set(x,.58,z+(z>0?.42:-.42));avatar.rotation.y=Math.atan2(-x,-z);seatGroup.add(avatar);
@@ -387,7 +395,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }else{
       const dealer=getCards('#dealerCards');
       dealer.forEach((c,i)=>placeCard('dealer:'+i+':'+c.label,c.label,(i-(dealer.length-1)/2)*.82,-1.25,(i-(dealer.length-1)/2)*.025,c.back));
-      const dealerLabel=labelSprite('DEALER','#e5c983');dealerLabel.position.set(0,.86,-1.82);dealerLabel.scale.set(1.45,.34,1);seatGroup.add(dealerLabel);
+      const dealerLabel=labelSprite('DEALER','#e5c983');dealerLabel.position.set(0,.28,-2.18);dealerLabel.scale.set(1.45,.34,1);seatGroup.add(dealerLabel);
       const hands=[...document.querySelectorAll('#bjHands .bj-hand')],heroIndex=Math.max(0,hands.findIndex(el=>el.classList.contains('mine'))),seatCount=Math.max(1,hands.length);
       hands.forEach((el,idx)=>{
         const isMine=el.classList.contains('mine');
@@ -401,7 +409,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         const title=el.querySelector('b')?.textContent?.trim()||'PLAYER';
         const total=el.querySelector('div:nth-of-type(2)')?.textContent?.trim()||'';
         const label=labelSprite((isMine?'YOU · ': '')+title.replace(/🤖/g,'').trim()+(total?' · '+total:''),isMine?'#ffdc8a':'#f4e7c2');
-        label.position.set(baseX,.83,baseZ+(isMine ? 0.43 : (baseZ>0 ? 0.48 : -0.35)));label.scale.set(isMine?1.8:1.55,.38,1);seatGroup.add(label);
+        label.position.set(baseX,.28,baseZ+(isMine ? 0.86 : (baseZ>0 ? 0.72 : -0.68)));label.scale.set(isMine?1.8:1.55,.34,1);seatGroup.add(label);
       });
       previousCardKeys=nextCardKeys;
       const potValue=[...document.querySelectorAll('#bjHands .bj-hand')].reduce((sum,el)=>{const m=el.textContent.match(/\bbet\s+([\d,]+)/i);return sum+(m?Number(m[1].replace(/,/g,''))||0:0)},0);
