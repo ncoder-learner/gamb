@@ -20,22 +20,28 @@ test('live-player invitations join the exact requesting socket and reject stale 
   assert.match(s,/io\.sockets\.sockets\.get\(req\.socketId\)/);
   assert.match(s,/That player disconnected\. Ask them to request again\./);
   assert.match(s,/p\.connected&&!p\.bot/);
+  assert.match(s,/hostSocket\.data\.room===room\.code/);
 });
 test('abandoned rooms and expired join requests are cleaned up',()=>{
   const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
-  assert.match(s,/const grace=room\.status==='LOBBY'\?120000:300000/);
+  assert.match(s,/const grace=room\.status==='LOBBY'\?60000:120000/);
   assert.match(s,/now-r\.at<90000/);
 });
 test('return-to-lobby keeps the player in the existing room',()=>{
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
   const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
   assert.match(app,/\$\('#leaveBtn'\)\.onclick=returnToRoom/);
+  assert.match(app,/You are still seated/);
+  assert.match(app,/Accepted\. You joined the existing table lobby/);
   assert.match(html,/id="leaveBtn">← ROOM LOBBY/);
 });
 test('immersive labels depth-test against cards and real CC0 wood maps are configured',()=>{
   const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
   assert.match(s,/depthTest:true,depthWrite:false/);
   assert.match(s,/wood_table_001/);
+  assert.match(s,/2a83c5/);
+  assert.match(s,/makeChip\(1\.35/);
+  assert.match(s,/#pot\{top:42%!important;left:77%!important/);
   assert.match(s,/wood_floor|floorMat/);
 });
 
