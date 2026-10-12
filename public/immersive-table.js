@@ -42,8 +42,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
   const camera = new THREE.PerspectiveCamera(51, 1, .1, 70);
-  camera.position.set(0, 3.0, 8.5);
-  camera.lookAt(0, .15, -.85);
+  camera.position.set(0, 1.72, 4.05);
+  camera.lookAt(0, .12, .65);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
   const key = new THREE.SpotLight(0xffe4ad, 190, 32, Math.PI/4.2, .5, 1.3);
@@ -83,7 +83,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     x.fillStyle=opts.color||'rgba(218,190,125,.44)';x.letterSpacing='9px';x.fillText(text,512,128);
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;
   }
-  const logo = new THREE.Mesh(new THREE.PlaneGeometry(2.65,.66),new THREE.MeshBasicMaterial({map:textTexture('GAME HUNK'),transparent:true,depthWrite:false}));
+  const logo = new THREE.Mesh(new THREE.PlaneGeometry(2.65,.66),new THREE.MeshBasicMaterial({map:textTexture('GAME HUNK',{size:58,color:'rgba(238,211,145,.72)'}),transparent:true,depthWrite:false}));
   logo.rotation.x=-Math.PI/2;logo.position.set(0,.125,-1.93);table.add(logo);
   const subtitle = new THREE.Mesh(new THREE.PlaneGeometry(2.1,.28),new THREE.MeshBasicMaterial({map:textTexture('PRIVATE POKER CLUB',{size:27,color:'rgba(226,211,172,.36)'}),transparent:true,depthWrite:false}));
   subtitle.rotation.x=-Math.PI/2;subtitle.position.set(0,.126,-1.58);table.add(subtitle);
@@ -140,17 +140,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function roundedCardShape(w,h,r){
     const s=new THREE.Shape();s.moveTo(-w/2+r,-h/2);s.lineTo(w/2-r,-h/2);s.quadraticCurveTo(w/2,-h/2,w/2,-h/2+r);s.lineTo(w/2,h/2-r);s.quadraticCurveTo(w/2,h/2,w/2-r,h/2);s.lineTo(-w/2+r,h/2);s.quadraticCurveTo(-w/2,h/2,-w/2,h/2-r);s.lineTo(-w/2,-h/2+r);s.quadraticCurveTo(-w/2,-h/2,-w/2+r,-h/2);return s;
   }
-  const cardGeo=new THREE.ExtrudeGeometry(roundedCardShape(.62,.88,.045),{depth:.018,bevelEnabled:true,bevelSegments:2,steps:1,bevelSize:.009,bevelThickness:.006,curveSegments:5});
+  const cardGeo=new THREE.ExtrudeGeometry(roundedCardShape(.72,.98,.05),{depth:.022,bevelEnabled:true,bevelSegments:3,steps:1,bevelSize:.01,bevelThickness:.007,curveSegments:7});
   function cardTexture(label,back=false){
     const c=document.createElement('canvas');c.width=256;c.height=360;const x=c.getContext('2d');
     x.fillStyle=back?'#f4ead7':'#fffdf5';x.fillRect(0,0,256,360);
     if(back){x.fillStyle='#182c24';x.fillRect(12,12,232,336);x.strokeStyle='#d1ad61';x.lineWidth=5;x.strokeRect(22,22,212,316);x.strokeStyle='#728d70';x.lineWidth=2;
       for(let y=35;y<325;y+=18){x.beginPath();x.moveTo(30,y);x.lineTo(226,y+12);x.stroke()}x.fillStyle='#e5c779';x.font='bold 34px Georgia';x.textAlign='center';x.fillText('GH',128,188);
     }else{
-      const red=/[♥♦]/.test(label);const ink=red?'#b72e30':'#171b1a';x.fillStyle=ink;x.font='bold 52px Georgia';x.textAlign='left';x.fillText(label,17,55);
-      const suitChar=label.slice(-1);x.font='bold 64px Georgia';x.fillText(suitChar,18,112);
-      x.save();x.translate(256,360);x.rotate(Math.PI);x.font='bold 52px Georgia';x.fillText(label,17,55);x.font='bold 64px Georgia';x.fillText(suitChar,18,112);x.restore();
-      x.font='70px Georgia';x.textAlign='center';x.fillText(suitChar,128,216);
+      const red=/[♥♦]/.test(label);const ink=red?'#b72e30':'#171b1a';x.fillStyle=ink;x.font='bold 76px Georgia';x.textAlign='left';x.fillText(label,18,76);
+      const suitChar=label.slice(-1);x.font='bold 88px Georgia';x.fillText(suitChar,18,157);
+      x.save();x.translate(256,360);x.rotate(Math.PI);x.font='bold 76px Georgia';x.fillText(label,18,76);x.font='bold 88px Georgia';x.fillText(suitChar,18,157);x.restore();
+      x.font='108px Georgia';x.textAlign='center';x.fillText(suitChar,128,226);
       x.strokeStyle='#ded7c8';x.lineWidth=2;x.strokeRect(5,5,246,350);
     }
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
@@ -160,14 +160,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     // Keep the beveled card body and use a separate plane for the printed face.
     // ExtrudeGeometry's default UVs are world-unit based, which can crop a CanvasTexture.
     const card=new THREE.Group();
-    card.position.set(x,.22,z);card.rotation.y=rot;
+    card.position.set(x,.22,z);card.rotation.set(-Math.PI/2+.18,rot,0);
     const body=new THREE.Mesh(cardGeo,side);
-    body.rotation.x=-Math.PI/2;body.castShadow=true;body.receiveShadow=true;card.add(body);
+    body.castShadow=true;body.receiveShadow=true;card.add(body);
     const face=new THREE.Mesh(
-      new THREE.PlaneGeometry(.575,.835),
+      new THREE.PlaneGeometry(.675,.935),
       new THREE.MeshBasicMaterial({map:front,side:THREE.DoubleSide,toneMapped:false})
     );
-    face.rotation.x=-Math.PI/2;face.position.y=.025;face.receiveShadow=true;card.add(face);
+    face.position.z=.03;face.receiveShadow=true;card.add(face);
     cardGroup.add(card);return card;
   }
   function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
@@ -187,10 +187,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const n=Math.max(1,nodes.length),mineIndex=Math.max(0,nodes.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2;
       const x=Math.sin(a)*3.85,z=Math.cos(a)*2.05;
       const isMine=el.classList.contains('mine'),active=el.classList.contains('active');
-      mesh(new THREE.CylinderGeometry(.24,.32,.5,24),mat(isMine?'#a7833e':'#252821',.5,.12),seatGroup,x,.33,z,.9,1,.9);
-      mesh(new THREE.CylinderGeometry(.48,.52,.14,32),mat(isMine?'#3a2820':'#17211b',.6),seatGroup,x,.64,z,.95,1,.9);
-      const back=mesh(new THREE.CapsuleGeometry(.39,.6,4,10),mat('#1c201a',.48),seatGroup,x,.98,z+(z>0?.42:-.42),1,.8,.55);
-      back.rotation.x=z>0?-.2:.2;
+      // First-person view: never render the local player's chair in front of their camera.
+      if(!isMine){
+        mesh(new THREE.CylinderGeometry(.24,.32,.5,24),mat('#252821',.5,.12),seatGroup,x,.33,z,.9,1,.9);
+        mesh(new THREE.CylinderGeometry(.48,.52,.14,32),mat('#17211b',.6),seatGroup,x,.64,z,.95,1,.9);
+        const back=mesh(new THREE.CapsuleGeometry(.39,.6,4,10),mat('#1c201a',.48),seatGroup,x,.98,z+(z>0?.42:-.42),1,.8,.55);
+        back.rotation.x=z>0?-.2:.2;
+      }
       const lab=labelSprite((el.querySelector('.seat-name')?.textContent||'PLAYER').trim(),active?'#ffdb84':'#f4e7c2');
       lab.position.set(x,1.48,z+(z>0?.56:-.5));seatGroup.add(lab);
       if(!isMine){
@@ -238,7 +241,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   heroCuff.rotation.x = -Math.PI/2; heroCuff.position.set(.23,0,-.42); heroArm.add(heroCuff);
   const heroHand = new THREE.Mesh(new THREE.SphereGeometry(.22,20,14),handMat);
   heroHand.scale.set(1.15,.65,1.35); heroHand.position.set(.23,.01,-.57); heroHand.castShadow=true; heroArm.add(heroHand);
-  heroArm.position.set(.7,.5,5.25); heroArm.visible=false;
+  heroArm.position.set(.42,.32,2.9); heroArm.visible=true;
   const movingChips=[];
   function throwChips(fromX,fromZ,count=3,color=1){
     for(let i=0;i<count;i++){
@@ -325,13 +328,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const t=clock.getElapsedTime(), now=performance.now();
     fill.intensity=36+Math.sin(t*.6)*2;
     camera.position.x=Math.sin(t*.12)*.025;
-    camera.position.y=3.0+Math.sin(t*.17)*.008;
-    camera.lookAt(0,.15,-.85);
+    camera.position.y=1.72+Math.sin(t*.17)*.004;
+    camera.lookAt(0,.12,.65);
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
       const reach=p<.48?p/.48:1-(p-.48)/.52;
       heroArm.visible=p<1;
-      heroArm.position.set(.7-reach*.48,.5+Math.sin(reach*Math.PI)*.06,5.25-reach*2.05);
+      heroArm.position.set(.42-reach*.28,.32+Math.sin(reach*Math.PI)*.06,2.9-reach*.78);
       if(p>=1)heroActionStart=0;
     }
     for(const [i,startAt] of seatGestures){
