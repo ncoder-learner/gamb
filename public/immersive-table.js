@@ -167,7 +167,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       new THREE.PlaneGeometry(.575,.835),
       new THREE.MeshBasicMaterial({map:front,side:THREE.DoubleSide,toneMapped:false})
     );
-    face.rotation.x=-Math.PI/2;face.position.y=.029;face.receiveShadow=true;card.add(face);
+    face.rotation.x=-Math.PI/2;face.position.y=.025;face.receiveShadow=true;card.add(face);
     cardGroup.add(card);return card;
   }
   function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
