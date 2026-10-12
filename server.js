@@ -119,7 +119,10 @@ function bjPublic(room){return {phase:room.blackjack.phase,dealer:room.blackjack
 function roulettePublic(room){return {phase:room.roulette.phase,bets:room.roulette.bets.map(b=>({...b})),result:room.roulette.result}}
 function chessPublic(room){return {fen:room.chess.game?.fen()||null,turn:room.chess.game?.turn()||null,white:room.chess.white,black:room.chess.black,winners:room.chess.winners,wagerPot:room.chess.wagerPot||0,entryBet:room.chess.entryBet||0}}
 function publicState(room){return {code:room.code,game:room.game,status:room.status,hostId:room.hostId,players:room.players.map(publicPlayer),chat:room.chat,joinRequests:room.joinRequests||[],turnPlayerId:room.turnPlayerId,turnEndsAt:room.turnEndsAt,poker:{phase:room.poker.phase,community:room.poker.community.map(cardText),pot:room.poker.pot,highestBet:room.poker.highestBet,minRaise:room.poker.minRaise,dealerIndex:room.poker.dealerIndex,winners:room.poker.winners,showdown:room.poker.showdown||[],handNo:room.poker.handNo},blackjack:bjPublic(room),roulette:roulettePublic(room),chess:chessPublic(room),serverNow:Date.now()}}
-}return best||cards.slice(0,5)}
+function handName(score){
+  const names=['High Card','Pair','Two Pair','Three of a Kind','Straight','Flush','Full House','Four of a Kind','Straight Flush'];
+  return names[score?.[0] ?? 0] || 'High Card';
+}
 function privateState(room,p){const s=publicState(room);let currentHand=null;if(room.game==='poker'&&p.hole.length){const cards=[...p.hole,...room.poker.community];if(cards.length>=5){currentHand=handName(eval7(cards))}else{const ranks=p.hole.map(x=>x.r);const counts={};ranks.forEach(x=>counts[x]=(counts[x]||0)+1);currentHand=Object.values(counts).some(n=>n===2)?'Pair':'High Card'}}s.me={id:p.id,reconnectToken:p.reconnectToken,hole:p.hole.map(cardText),name:p.name,accountId:p.accountId,currentHand};return s}
 function broadcast(room){io.to(room.code).emit('state',publicState(room));for(const p of room.players)if(p.socketId)io.to(p.socketId).emit('state',privateState(room,p));}
 function clearTimer(room){if(room.timer)clearTimeout(room.timer);room.timer=null;room.turnEndsAt=null;}
