@@ -196,3 +196,18 @@
 
 /* Premium blackjack layout fallback; the 3D table owns the felt/cards when immersive mode is active. */
 .bj-board{padding:clamp(10px,2vw,24px);overflow:hidden}.bj-table{position:relative;isolation:isolate;min-height:560px;padding:clamp(18px,3vw,42px);background:radial-gradient(ellipse at 50% 42%,#126c47 0,#075137 48%,#032619 100%);border:16px solid #211b12;box-shadow:inset 0 0 0 2px #b68c42,inset 0 0 0 6px #10110e,inset 0 0 70px #00170e,0 24px 65px #0009}.bj-table:before{content:'';position:absolute;inset:14px;border:1px solid #c5a05b55;border-radius:24px;pointer-events:none}.dealer-zone{position:relative;min-height:150px;padding:12px 14px;border-bottom:1px solid #d3b16a3d}.dealer-zone .eyebrow{color:#e5c983;letter-spacing:.2em}.bj-hands{position:relative;z-index:1;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:10px;margin-top:16px}.bj-hand{min-width:0;padding:14px;border:1px solid #d8b66a30;border-radius:14px;background:linear-gradient(145deg,#092d20b8,#061a13c9);box-shadow:inset 0 1px #ffffff08}.bj-hand.mine{border-color:#d8b66a88;background:linear-gradient(145deg,#143d2b,#09251a);box-shadow:0 0 24px #d3ae5b15,inset 0 1px #f5d78a20}.bj-hand>b{font-size:12px;letter-spacing:.08em;color:#f1dfb4}.bj-hand .cards{gap:5px;min-height:74px}.bj-hand .card{width:clamp(42px,5vw,58px);height:clamp(60px,7vw,82px);font-size:clamp(17px,2vw,22px);border-radius:7px;box-shadow:0 8px 18px #0008}.bj-hand .eyebrow{font-size:9px;color:#f0cf7a}.bj-hand .muted{color:#c2cabe;font-size:12px;padding:10px 0}@media(max-width:700px){.bj-table{min-height:500px;border-width:10px}.dealer-zone{min-height:125px}.bj-hands{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}.bj-hand{padding:9px}.bj-hand .cards{gap:3px}}
+
+/* Blackjack heads-up display: persistent, readable at the upper-left of the table. */
+.bj-board{position:relative}
+.bj-hud{position:absolute;top:18px;left:18px;z-index:25;width:min(270px,calc(100% - 36px));padding:16px 18px;border:1px solid rgba(220,187,112,.52);border-radius:16px;background:linear-gradient(145deg,rgba(9,20,15,.97),rgba(7,11,9,.94));box-shadow:0 12px 38px rgba(0,0,0,.48),inset 0 1px rgba(255,255,255,.06);backdrop-filter:blur(12px);pointer-events:none}
+.bj-hud-kicker{font-size:9px;letter-spacing:.19em;font-weight:900;color:#d8b66e}
+.bj-hud-total{display:flex;align-items:baseline;gap:9px;font-size:42px;line-height:1.08;font-weight:900;font-variant-numeric:tabular-nums;color:#fff8e8;margin:5px 0 9px}
+.bj-hud-total span{font-size:9px;letter-spacing:.17em;color:#a6b2a7}
+.bj-hud-status{font-size:12px;line-height:1.35;font-weight:900;letter-spacing:.055em;color:#e6c87f}
+.bj-hud-status.is-loss{color:#ff9386}.bj-hud-status.is-win{color:#9ce3b6}
+.bj-hud-detail{font-size:11px;line-height:1.5;color:#c4cec5;margin-top:5px}
+.bj-hud-bet{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,.1);font-size:9px;letter-spacing:.08em;color:#a6d7b4}
+.bj-hud-bet b{font-size:10px;color:#f2d89a;white-space:nowrap}
+.bj-hud-bet.is-empty{color:#a5aaa2}
+@media(max-width:650px){.bj-hud{top:10px;left:10px;width:min(230px,calc(100% - 20px));padding:11px 12px}.bj-hud-total{font-size:34px}.bj-hud-detail{font-size:10px}}
+.game-main.immersive-active .bj-hud{z-index:30;top:14px;left:14px;max-width:240px}
