@@ -185,3 +185,11 @@
 .casino-overhaul .roulette-board .roulette-wrap .roulette-result{background:transparent!important;border:0!important;margin:0!important;padding:0!important}
 @media(max-width:800px){.casino-overhaul .roulette-board .roulette-wrap{padding:10px!important}.casino-overhaul .roulette-board .wheel{width:min(72vw,290px)!important}}
 @media(max-width:430px){.casino-overhaul .roulette-board .roulette-wrap{padding:6px!important}.casino-overhaul .roulette-board .wheel{width:min(78vw,265px)!important}}
+
+
+/* Poker action bar: show hand status only; the hole cards already appear at the table. */
+#pokerActions .hero-hand.docked-hand #myHand{display:none!important}
+#pokerActions .hero-hand.docked-hand{flex:0 1 auto!important;width:auto!important;min-width:0!important;max-width:none!important;min-height:0!important;gap:7px!important;padding:8px 12px!important;justify-content:flex-start!important;white-space:nowrap!important}
+#pokerActions .hero-hand.docked-hand .hero-hand-label{flex:0 0 auto!important}
+#pokerActions .hero-hand.docked-hand .my-hand-strength{flex:0 1 auto!important;max-width:none!important;white-space:nowrap!important;overflow:visible!important}
+@media(max-width:850px){#pokerActions .hero-hand.docked-hand{width:auto!important;max-width:100%!important;flex:0 1 auto!important;justify-content:flex-start!important;order:0!important;padding:7px 10px!important}#pokerActions .hero-hand.docked-hand .my-hand-strength{max-width:none!important;white-space:normal!important}}
