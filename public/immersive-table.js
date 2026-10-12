@@ -150,7 +150,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const m=new THREE.Mesh(cardGeo,[side,new THREE.MeshBasicMaterial({map:front})]);
     m.rotation.x=-Math.PI/2;m.rotation.z=rot;m.position.set(x,.22,z);m.castShadow=true;m.receiveShadow=true;cardGroup.add(m);return m;
   }
-  function clearGroup(g){while(g.children.length){const o=g.children.pop();o.traverse?.(v=>{if(v.geometry)v.geometry.dispose();if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose();m.dispose()})}})}}
+  function clearGroup(g){while(g.children.length){const o=g.children[g.children.length-1];g.remove(o);o.traverse?.(v=>{if(v.material){const ms=Array.isArray(v.material)?v.material:[v.material];ms.forEach(m=>{if(m.map)m.map.dispose()})}})}}
   function labelSprite(text, color='#f4e7c2'){
     const c=document.createElement('canvas');c.width=512;c.height=128;const x=c.getContext('2d');
     x.fillStyle='rgba(8,12,9,.88)';x.strokeStyle='rgba(201,168,94,.72)';x.lineWidth=4;
@@ -161,7 +161,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     clearGroup(seatGroup);
     const nodes=[...document.querySelectorAll('#seats .seat')];
     nodes.forEach((el,i)=>{
-      const n=Math.max(1,nodes.length),a=(Math.PI*.5)+(i/n)*Math.PI*2;
+      const n=Math.max(1,nodes.length),mineIndex=Math.max(0,nodes.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2;
       const x=Math.sin(a)*3.85,z=Math.cos(a)*2.05;
       const isMine=el.classList.contains('mine'), active=el.classList.contains('active');
       const pedestal=mesh(new THREE.CylinderGeometry(.24,.32,.5,24),mat(isMine?'#a7833e':'#252821',.5,.12),seatGroup,x,.33,z,.9,1,.9);
@@ -187,16 +187,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       ? [...getCards('#dealerCards'),...getCards('#bjHands .bj-hand .cards')]
       : [...getCards('#community'),...getCards('#myHand'),...getCards('#seats .hole')];
     const seatSig=[...document.querySelectorAll('#seats .seat')].map(e=>e.textContent).join('|');
-    if(force||seatSig!==lastSeatSig){lastSeatSig=seatSig;clearGroup(chipsGroup);rebuildSeats();}
     const sig=gameType+'|'+phase+'|'+cards.map(c=>c.label+(c.back?'b':'f')).join(',');
-    if(!force&&sig===signature)return;signature=sig;
+    if(!force&&sig===signature&&seatSig===lastSeatSig)return;
+    const seatsChanged=force||seatSig!==lastSeatSig;lastSeatSig=seatSig;signature=sig;
+    clearGroup(chipsGroup);if(seatsChanged||force)rebuildSeats();
     clearGroup(cardGroup);
     if(gameType==='poker'){
       const community=getCards('#community');community.forEach((c,i)=>addCard(c.label,-1.24+i*.62,-.35,(i-2)*.018,c.back));
       const mine=getCards('#myHand');mine.forEach((c,i)=>addCard(c.label,-.37+i*.66,1.35,(i-.5)*.08,c.back));
       const seats=[...document.querySelectorAll('#seats .seat')];
       seats.forEach((el,i)=>{
-        const n=Math.max(1,seats.length),a=Math.PI/2+(i/n)*Math.PI*2,x=Math.sin(a)*3.15,z=Math.cos(a)*1.65;
+        const n=Math.max(1,seats.length),mineIndex=Math.max(0,seats.findIndex(e=>e.classList.contains('mine'))),a=((i-mineIndex)/n)*Math.PI*2,x=Math.sin(a)*3.15,z=Math.cos(a)*1.65;
         getCards('#seats .seat:nth-child('+(i+1)+') .hole').forEach((c,j)=>addCard(c.label,x+(j-.5)*.34,z,(j-.5)*.08,c.back));
       });
       // Place the pot in a visible physical stack at the center of the felt.
