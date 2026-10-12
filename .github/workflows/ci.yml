@@ -16,4 +16,6 @@ jobs:
           node-version: 20
       - run: npm install
       - run: node --check public/app.js
+      - run: node --check server.js
+      - run: node --input-type=module --check < public/immersive-table.js
       - run: npm test
