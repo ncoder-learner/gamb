@@ -276,13 +276,66 @@ function boardTexture(board){
   for(let i=0;i<uniq.length;i++)if(uniq.filter(v=>v>=uniq[i]&&v<=uniq[i]+4).length>=3){straightDraw=true;break}
   return {wet:Object.values(suits).some(n=>n>=3)||straightDraw||new Set(ranks).size<ranks.length};
 }
+async function requestAIPokerAction(p,room,context){
+  if(process.env.AI_BOTS_ENABLED!=='1'||!process.env.OPENAI_API_KEY)return null;
+  const callAmount=context.call,pot=context.pot;
+  const opponents=room.players.filter(q=>q.id!==p.id&&!q.folded&&!q.allIn&&(q.chips+q.bet>0)&&(q.connected||q.bot));
+  const snapshot={
+    phase:room.poker.phase,
+    yourCards:p.hole.map(cardText),
+    communityCards:room.poker.community.map(cardText),
+    pot,
+    callAmount,
+    potOdds:Number((callAmount/(pot+callAmount||1)).toFixed(3)),
+    yourChips:p.chips,
+    yourCurrentBet:p.bet,
+    highestBet:room.poker.highestBet,
+    minimumRaiseTo:context.minTo,
+    maximumRaiseTo:context.maxTo,
+    opponents:opponents.map(q=>({name:q.name,botType:q.botType||null,stack:q.chips,currentBet:q.bet,lastAction:q.lastAction||q.action||null})),
+    estimatedEquity:Number(context.equity.toFixed(3)),
+    personality:{type:p.botType||'River',aggression:context.cfg.aggression,tightness:context.cfg.tight,bluffFrequency:context.cfg.bluff}
+  };
+  try{
+    const response=await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST',
+      headers:{Authorization:'Bearer '+process.env.OPENAI_API_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:process.env.AI_BOT_MODEL||'gpt-4.1-mini',
+        temperature:0.2,
+        max_tokens:100,
+        response_format:{type:'json_object'},
+        messages:[
+          {role:'system',content:'You are a poker strategy agent for a free-play Texas Hold’em bot. Use only the supplied public state and the bot’s own cards. Never assume you can see opponents’ hole cards. Choose a legal action based on equity, pot odds, stack depth, position and the bot personality. Do not bluff just because it is possible. Return JSON only: {"action":"fold|check|call|raise","raiseTo":number|null}. raiseTo is the total bet amount for this street, not the extra amount to add. If facing no bet, choose check or raise. If facing a bet, choose fold, call, or raise.'},
+          {role:'user',content:JSON.stringify(snapshot)}
+        ]
+      }),
+      signal:AbortSignal.timeout(1600)
+    });
+    if(!response.ok)return null;
+    const data=await response.json();
+    const parsed=JSON.parse(data.choices?.[0]?.message?.content||'{}');
+    let action=String(parsed.action||'').toLowerCase(),amount=Number(parsed.raiseTo);
+    if(!['fold','check','call','raise'].includes(action))return null;
+    if(action==='check'&&callAmount>0)action='call';
+    if(action==='call'&&callAmount===0)action='check';
+    if(action==='raise'){
+      if(!Number.isFinite(amount)||amount<context.minTo||amount>context.maxTo)return null;
+    }
+    if(action==='fold'&&callAmount===0)return null;
+    return {action,amount:action==='raise'?amount:undefined};
+  }catch(error){
+    if(process.env.AI_BOT_DEBUG==='1')console.warn('[ai-poker] Decision failed; using strategy fallback:',error.message);
+    return null;
+  }
+}
 function botTick(room){
   if(!rooms.has(room.code))return;
   if(room.game==='poker'&&room.turnPlayerId){
     const p=room.players.find(x=>x.id===room.turnPlayerId);
     if(p?.bot&&!p._botPending){
       p._botPending=true;
-      setTimeout(()=>{
+      setTimeout(async ()=>{
         p._botPending=false;
         if(!rooms.has(room.code)||room.turnPlayerId!==p.id||!room.poker.needsAction.has(p.id))return;
         const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;
@@ -313,6 +366,8 @@ function botTick(room){
           amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*fraction))));
         }
         if(action==='raise'&&(!Number.isFinite(amount)||amount<minTo||amount>maxTo))action=call?'call':'check';
+        const aiChoice=await requestAIPokerAction(p,room,{call,pot,equity:preflop?strength:equity,minTo,maxTo,cfg});
+        if(aiChoice){action=aiChoice.action;amount=aiChoice.amount;}
         pokerAction(room,p,action,amount);
       },650+crypto.randomInt(1200));
     }
