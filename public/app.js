@@ -170,24 +170,25 @@ $('#addBotBtn').onclick=()=>openModal(`<span class="eyebrow">SERVER-SIDE BOTS</s
 document.addEventListener('click',e=>{const b=e.target.closest('[data-bot]');if(b)call('addBot',{type:b.dataset.bot}).then(r=>{if(!r.ok)toast(r.error);else closeModal()})});
 document.addEventListener('gh:poker-action',async event=>{
  const request=event.detail||{},mine=mePlayer(),p=state?.poker||{};
- if(!state||state.game!=='poker')return;
- if(state.turnPlayerId!==mine?.id){toast("It's not your turn.");return}
+ const failThrow=message=>{toast(message);document.dispatchEvent(new CustomEvent('gh:poker-action-result',{detail:{ok:false}}))};
+ if(!state||state.game!=='poker'){if(request.action==='throw-in')failThrow('The poker table is not active.');return}
+ if(state.turnPlayerId!==mine?.id){if(request.action==='throw-in')failThrow("It's not your turn.");else toast("It's not your turn.");return}
  if(request.action==='check'){
    if($('#callBtn')?.dataset.action!=='check'){toast('A call is due. Use CALL or stage enough chips to raise.');return}
    const r=await call('pokerAction',{action:'check'});if(!r.ok)toast(r.error);return;
  }
  if(request.action!=='throw-in')return;
  const contribution=Math.floor(Number(request.contribution)||0),stack=Math.max(0,Number(mine?.chips)||0),myBet=Math.max(0,Number(mine?.bet)||0);
- if(contribution<=0){toast('Click chips to stage a bet first.');return}
- if(stack<=0){toast('You have no chips left to bet.');return}
+ if(contribution<=0){failThrow('Click chips to stage a bet first.');return}
+ if(stack<=0){failThrow('You have no chips left to bet.');return}
  const toCall=Math.max(0,Number(p.highestBet||0)-myBet);
- if(contribution<toCall&&contribution<stack){toast('You need '+toCall.toLocaleString()+' chips to call, or choose ALL-IN.');return}
+ if(contribution<toCall&&contribution<stack){failThrow('You need '+toCall.toLocaleString()+' chips to call, or choose ALL-IN.');return}
  let action,amount;
  if(contribution>=stack)action='allin';
  else if(toCall>0&&contribution===toCall)action='call';
  else {action='raise';amount=myBet+contribution}
  const r=await call('pokerAction',{action,amount});
- if(!r.ok)toast(r.error);else document.dispatchEvent(new CustomEvent('gh:poker-action-result',{detail:{ok:true}}));
+ if(!r.ok)failThrow(r.error);else document.dispatchEvent(new CustomEvent('gh:poker-action-result',{detail:{ok:true}}));
 });
 $('[data-action]').forEach(b=>b.onclick=()=>{let amount=Number($('#raiseAmount').value);call('pokerAction',{action:b.dataset.action,amount}).then(r=>{if(!r.ok)toast(r.error)})});
 $$('[data-bj]').forEach(b=>b.onclick=()=>call('blackjackAction',{action:b.dataset.bj}).then(r=>{if(!r.ok)toast(r.error)}));$('#bjBetBtn').onclick=()=>{const amount=Number($('#bjBet').value);call('blackjackBet',{amount}).then(r=>{if(!r.ok)toast(r.error);else{toast(`Bet placed · ${amount.toLocaleString()} virtual tokens`);$('#bjBet').value='';}})};
