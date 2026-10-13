@@ -66,6 +66,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     stagedActionPending=false;
     if(e.detail?.ok){throwStagedChipPicks(stagedChipPicks);stagedChipPicks=[];stagedChipAmount=0;updateStagedChips();}
   });
+  updateStagedChips();
 
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
@@ -503,6 +504,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   },true);
   root.addEventListener('dblclick',event=>{
     if(ignoredSceneTarget(event.target))return;
+    const rect=canvas.getBoundingClientRect();
+    if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)return;
     const hit=sceneHit(event);
     if(hit.heroCard||hit.chip)return;
     document.dispatchEvent(new CustomEvent('gh:poker-action',{detail:{action:'check'}}));
