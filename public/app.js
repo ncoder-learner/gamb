@@ -168,7 +168,28 @@ $$('.game-tab').forEach(b=>b.onclick=()=>call('setGame',{game:b.dataset.game}).t
 $('#startBtn').onclick=async()=>{const entryBet=state?.game==='chess'?Math.max(0,Number($('#chessWager')?.value||0)):0;const r=await call('startGame',{entryBet});if(!r.ok)toast(r.error);};
 $('#addBotBtn').onclick=()=>openModal(`<span class="eyebrow">SERVER-SIDE BOTS</span><h2>Add a bot</h2><p class="modal-sub">Bots play on the server using the same legal actions as humans.</p><div class="bot-grid">${Object.entries({Ace:'Tight / conservative',Shark:'Aggressive / pressure',Bluff:'Frequent bluffs',Lucky:'Loose / call-heavy',Dealer:'Low variance',River:'Balanced',Pocket:'Tight-aggressive',Wildcard:'Unpredictable'}).map(([n,d])=>`<button class="bot-option" data-bot="${n}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`);
 document.addEventListener('click',e=>{const b=e.target.closest('[data-bot]');if(b)call('addBot',{type:b.dataset.bot}).then(r=>{if(!r.ok)toast(r.error);else closeModal()})});
-$$('[data-action]').forEach(b=>b.onclick=()=>{let amount=Number($('#raiseAmount').value);call('pokerAction',{action:b.dataset.action,amount}).then(r=>{if(!r.ok)toast(r.error)})});
+document.addEventListener('gh:poker-action',async event=>{
+ const request=event.detail||{},mine=mePlayer(),p=state?.poker||{};
+ if(!state||state.game!=='poker')return;
+ if(state.turnPlayerId!==mine?.id){toast("It's not your turn.");return}
+ if(request.action==='check'){
+   if($('#callBtn')?.dataset.action!=='check'){toast('A call is due. Use CALL or stage enough chips to raise.');return}
+   const r=await call('pokerAction',{action:'check'});if(!r.ok)toast(r.error);return;
+ }
+ if(request.action!=='throw-in')return;
+ const contribution=Math.floor(Number(request.contribution)||0),stack=Math.max(0,Number(mine?.chips)||0),myBet=Math.max(0,Number(mine?.bet)||0);
+ if(contribution<=0){toast('Click chips to stage a bet first.');return}
+ if(stack<=0){toast('You have no chips left to bet.');return}
+ const toCall=Math.max(0,Number(p.highestBet||0)-myBet);
+ if(contribution<toCall&&contribution<stack){toast('You need '+toCall.toLocaleString()+' chips to call, or choose ALL-IN.');return}
+ let action,amount;
+ if(contribution>=stack)action='allin';
+ else if(toCall>0&&contribution===toCall)action='call';
+ else {action='raise';amount=myBet+contribution}
+ const r=await call('pokerAction',{action,amount});
+ if(!r.ok)toast(r.error);else document.dispatchEvent(new CustomEvent('gh:poker-action-result',{detail:{ok:true}}));
+});
+$('[data-action]').forEach(b=>b.onclick=()=>{let amount=Number($('#raiseAmount').value);call('pokerAction',{action:b.dataset.action,amount}).then(r=>{if(!r.ok)toast(r.error)})});
 $$('[data-bj]').forEach(b=>b.onclick=()=>call('blackjackAction',{action:b.dataset.bj}).then(r=>{if(!r.ok)toast(r.error)}));$('#bjBetBtn').onclick=()=>{const amount=Number($('#bjBet').value);call('blackjackBet',{amount}).then(r=>{if(!r.ok)toast(r.error);else{toast(`Bet placed · ${amount.toLocaleString()} virtual tokens`);$('#bjBet').value='';}})};
 $('#spinBtn').onclick=()=>call('rouletteSpin',{}).then(r=>{if(!r.ok)toast(r.error)});
 $$('.bet-chip').forEach(b=>b.onclick=()=>{if(b.id==='numberBet')return;const amount=Number($('#rouletteAmount').value||25);call('rouletteBet',{type:b.dataset.type,value:b.dataset.value||'',amount}).then(r=>{if(!r.ok)toast(r.error);else toast('Bet placed')})});$('#numberBet').onclick=()=>{const amount=Number($('#rouletteAmount').value||25),raw=$('#rouletteNumber').value.trim(),value=raw==='00'?'00':Number(raw);if(!(value==='00'||Number.isInteger(value)&&value>=0&&value<=36))return toast('Choose a number from 0 to 36, or 00.');call('rouletteBet',{type:'number',value,amount}).then(r=>{if(!r.ok)toast(r.error);else toast(`Bet on ${value} placed`)})};$('#rouletteNumber').max='36';$('.roulette-number-area').addEventListener('click',e=>{const b=e.target.closest('[data-roulette-number]');if(!b)return;$('#rouletteNumber').value=b.dataset.rouletteNumber;$('#numberBet').click()});
