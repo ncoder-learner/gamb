@@ -248,7 +248,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const frontTexture=cardTexture(label||'?',false),backTexture=cardTexture('',true),side=mat('#e0d7c4',.48);
     // A card rests horizontal on the felt. YXZ keeps the second angle as a flat in-plane yaw.
     const card=new THREE.Group();
-    card.rotation.order='YXZ';card.position.set(x,.145,z);card.rotation.set(-Math.PI/2,rot,0);
+    card.rotation.order='YXZ';card.position.set(x,.145,z);card.rotation.set(-Math.PI/2,Math.PI+rot,0);
     const body=new THREE.Mesh(cardGeo,side);
     body.castShadow=true;body.receiveShadow=true;card.add(body);
     const face=new THREE.Mesh(new THREE.PlaneGeometry(.675,.935),new THREE.MeshBasicMaterial({map:back?backTexture:frontTexture,side:THREE.DoubleSide,toneMapped:false}));
@@ -544,7 +544,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const peekPosition=d.basePosition.clone().add(new THREE.Vector3(d.basePosition.x*.12,.92,1.05));
       card.position.lerpVectors(d.basePosition,peekPosition,ease);
       card.rotation.order='YXZ';
-      card.rotation.set(THREE.MathUtils.lerp(d.baseRotation.x,-Math.PI/2+.82,ease),d.baseRotation.y,0);
+      card.rotation.set(THREE.MathUtils.lerp(d.baseRotation.x,-Math.PI/2+.82,ease),THREE.MathUtils.lerp(d.baseRotation.y,0,ease),0);
       if(!peekOpen&&p<.08&&d.face.material.map!==d.backTexture){d.face.material.map=d.backTexture;d.face.material.needsUpdate=true;}
     }
     camera.position.x=Math.sin(t*.12)*.012;
