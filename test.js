@@ -89,3 +89,25 @@ test('developer maintenance endpoints require server-side credentials and author
  for(const marker of ['/api/dev/login','/api/dev/reset-leaderboard','/api/dev/reset-rooms','DEV_PASSWORD','adminFromRequest'])assert.ok(s.includes(marker),marker);
  assert.doesNotMatch(s,/DEV_PASSWORD\s*[:=]\s*['"]dev123['"]/);
 });
+
+test('poker bots use sampled opponent hole cards and adaptive pot-odds strategy',()=>{
+ const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ assert.match(s,/function estimateEquity\(p,room,trials=160\)/);
+ assert.match(s,/const opponentHands=opponents\.map\(\(\)=>\[draw\(\),draw\(\)\]\)/);
+ assert.match(s,/function preflopStrength\(hole\)/);
+ assert.match(s,/function boardTexture\(board\)/);
+ assert.match(s,/potOdds/);
+ assert.match(s,/cfg\.tight/);
+ assert.match(s,/cfg\.aggression/);
+});
+test('optional game hub features are present without changing authoritative game actions',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ const css=fs.readFileSync(path.join(root,'public/style.css'),'utf8');
+ for(const x of ['Warm-up','function updateFunFeatures','function renderFunTab','data-fun-tab="coach"','data-fun-tab="recap"','data-fun-tab="social"','data-emote','gh_fun_sound','gh_fun_accent'])assert.ok(app.includes(x),x);
+ assert.match(app,/call\('chat',\{text:b\.dataset\.emote\}\)/);
+ assert.match(css,/#funDock/);
+});
+test('developer login preview reports backend branch mismatch clearly',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
+});
