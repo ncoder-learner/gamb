@@ -48,7 +48,7 @@ test('immersive labels depth-test against cards and real CC0 wood maps are confi
 test('original poker controls remain wired and physical chips are clickable',()=>{
   const scene=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
-  assert.match(scene,/pointer-events:auto;touch-action:manipulation/);
+  assert.match(scene,/pointer-events:auto;touch-action:none/);
   assert.match(scene,/roundedCardShape\(\.86,1\.16/);
   assert.match(scene,/communityGap/);
   assert.match(scene,/isHeroCard=true/);
