@@ -50,7 +50,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const physicalBetUi=document.createElement('div');
   physicalBetUi.id='physicalChipBet';
-  physicalBetUi.innerHTML='<span class="physical-bet-label">CHIPS SELECTED</span><strong id="physicalBetAmount">0</strong><button id="throwPhysicalChips" type="button" disabled>THROW CHIPS</button>';
+  physicalBetUi.innerHTML='<span class="physical-bet-label" id="physicalBetHint">SELECT PHYSICAL CHIPS</span><strong id="physicalBetAmount">0</strong><button id="throwPhysicalChips" type="button" disabled>THROW CHIPS</button>';
   const physicalBetStyle=document.createElement('style');
   physicalBetStyle.textContent=`
     #physicalChipBet{display:flex;align-items:center;gap:8px;min-height:38px;padding:5px 7px;border:1px solid #c6a25e66;border-radius:10px;background:#0b1510;color:#f3e7c9;font:700 11px/1.2 'DM Sans',sans-serif}
@@ -65,11 +65,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   if(pokerActionRow)pokerActionRow.appendChild(physicalBetUi);
   let selectedPhysicalBet=0, physicalBetState={myTurn:false,stack:0,toCall:0,minContribution:1};
   const physicalBetAmount=document.querySelector('#physicalBetAmount');
+  const physicalBetHint=document.querySelector('#physicalBetHint');
   const throwPhysicalChips=document.querySelector('#throwPhysicalChips');
   function updatePhysicalBetUi(){
     if(physicalBetAmount)physicalBetAmount.textContent=selectedPhysicalBet.toLocaleString();
+    if(physicalBetHint)physicalBetHint.textContent=physicalBetState.toCall>0?'CALL NEEDS '+physicalBetState.toCall.toLocaleString():'SELECT CHIPS';
     if(throwPhysicalChips)throwPhysicalChips.disabled=!physicalBetState.myTurn||selectedPhysicalBet<=0;
     if(throwPhysicalChips)throwPhysicalChips.textContent=physicalBetState.toCall>0&&selectedPhysicalBet===physicalBetState.toCall?'THROW IN · CALL':'THROW CHIPS';
+    if(typeof chipsGroup!=='undefined')chipsGroup.traverse(o=>{const v=Number(o.userData?.pokerChipValue)||0;if(o.isMesh&&o.material?.emissive){const active=physicalBetState.myTurn&&physicalBetState.toCall>0&&v>0&&v<=physicalBetState.toCall;o.material.emissive.set(active?'#7d6429':'#000000');o.material.emissiveIntensity=active?.6:0;}});
   }
   document.addEventListener('gh:poker-bet-state',event=>{
     physicalBetState={...physicalBetState,...(event.detail||{})};
@@ -85,7 +88,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   });
 
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -95,18 +98,20 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const scene = new THREE.Scene();
   scene.background = new THREE.Color('#080a08');
   scene.fog = new THREE.Fog('#080a08', 13, 27);
-  const camera = new THREE.PerspectiveCamera(58, 1, .1, 70);
+  const camera = new THREE.PerspectiveCamera(52, 1, .1, 70);
+  let cameraYaw=0, cameraPitch=.34, cameraDistance=7.7;
+  const cameraTarget=new THREE.Vector3(0,.12,0);
   camera.position.set(0, 2.15, 6.8);
-  camera.lookAt(0, .12, .05);
+  camera.lookAt(cameraTarget);
 
   scene.add(new THREE.HemisphereLight(0xe7f0e4, 0x17110a, 2.0));
   const key = new THREE.SpotLight(0xffe4ad, 190, 32, Math.PI/4.2, .5, 1.3);
-  key.position.set(-3.5, 9, -4.5); key.target.position.set(0,0,0); key.castShadow=true; key.shadow.mapSize.set(1024,1024); scene.add(key,key.target);
+  key.position.set(-3.5, 9, -4.5); key.target.position.set(0,0,0); key.castShadow=true; key.shadow.mapSize.set(2048,2048); scene.add(key,key.target);
   const fill = new THREE.PointLight(0x4c9a70, 38, 18); fill.position.set(5,4,4); scene.add(fill);
   const rim = new THREE.PointLight(0xf1bf65, 46, 15); rim.position.set(0,4,-6); scene.add(rim);
 
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-  const feltCanvas=document.createElement('canvas');feltCanvas.width=1024;feltCanvas.height=1024;const feltCtx=feltCanvas.getContext('2d');
+  const feltCanvas=document.createElement('canvas');feltCanvas.width=2048;feltCanvas.height=2048;const feltCtx=feltCanvas.getContext('2d');
   const feltGradient=feltCtx.createRadialGradient(512,480,90,512,512,720);feltGradient.addColorStop(0,'#2a83c5');feltGradient.addColorStop(.62,'#15598f');feltGradient.addColorStop(1,'#082e50');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,1024,1024);
   let feltSeed=82417;const rand=()=>{feltSeed=(feltSeed*1664525+1013904223)>>>0;return feltSeed/4294967296};
   for(let i=0;i<54000;i++){const x=rand()*1024,y=rand()*1024,a=.018+rand()*.055;feltCtx.strokeStyle=rand()>.5?`rgba(218,231,207,${a})`:`rgba(0,0,0,${a*1.3})`;feltCtx.lineWidth=.45+rand()*.8;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*5,y+1+rand()*3);feltCtx.stroke()}
@@ -119,7 +124,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   // CC0 PBR surface maps from Poly Haven: wood_table_001 for the rail and wood_floor_02 for the room floor.
   // Procedural felt remains the fallback, so the table still renders if the asset CDN is unavailable.
   const pbrLoader=new THREE.TextureLoader();pbrLoader.setCrossOrigin('anonymous');
-  function loadPolyHaven(asset,mapName,onLoad,repeatX=2,repeatY=1){const url=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/${asset}/${asset}_${mapName}_1k.jpg`;pbrLoader.load(url,tex=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatX,repeatY);tex.anisotropy=8;if(mapName==='diff')tex.colorSpace=THREE.SRGBColorSpace;onLoad(tex)},undefined,()=>{});}
+  function loadPolyHaven(asset,mapName,onLoad,repeatX=2,repeatY=1){const url=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/${asset}/${asset}_${mapName}_2k.jpg`;pbrLoader.load(url,tex=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatX,repeatY);tex.anisotropy=8;if(mapName==='diff')tex.colorSpace=THREE.SRGBColorSpace;onLoad(tex)},undefined,()=>{});}
 
   loadPolyHaven('stretch_poplin','diff',t=>{feltMat.map=t;feltMat.color.set('#6e9fc6');feltMat.needsUpdate=true},4,4);
   loadPolyHaven('stretch_poplin','nor_gl',t=>{feltMat.normalMap=t;feltMat.normalScale=new THREE.Vector2(.34,.34);feltMat.needsUpdate=true},4,4);
@@ -372,11 +377,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       movingChips.push({g,from:new THREE.Vector3(g.position.x,g.position.y,g.position.z),to:new THREE.Vector3(-.2+(i%3)*.18,.2,-.82+(i%2)*.12),start:performance.now()+i*65,duration:520+i*40});
     }
   }
-  let heroActionStart=0;
+  let heroActionStart=0, heroTapStart=0;
   function animateHeroAction(action){
-    if(!['CALL','RAISE','ALL-IN','CHECK'].includes(String(action).toUpperCase()))return;
+    const normalized=String(action).toUpperCase();
+    if(normalized==='TABLE TAP'){heroTapStart=performance.now();heroArm.visible=true;return;}
+    if(!['CALL','RAISE','ALL-IN','CHECK'].includes(normalized))return;
     heroActionStart=performance.now();heroArm.visible=true;
-    if(['CALL','RAISE','ALL-IN'].includes(String(action).toUpperCase()))throwChips(.55,3.0,action==='ALL-IN'?5:3,action==='RAISE'?4:1);
+    if(['CALL','RAISE','ALL-IN'].includes(normalized))throwChips(.55,3.0,normalized==='ALL-IN'?5:3,normalized==='RAISE'?4:1);
   }
   const previousActions=new Map();
   const seatGestures=new Map();
@@ -489,11 +496,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const pointerRaycaster=new THREE.Raycaster();
   const pointerNdc=new THREE.Vector2();
-  let pointerStart=null;
-  canvas.addEventListener('pointerdown',event=>{pointerStart={x:event.clientX,y:event.clientY};},{passive:true});
+  let pointerStart=null,dragState=null;
+  canvas.style.touchAction='none';
+  canvas.addEventListener('pointerdown',event=>{if(event.button!==0&&event.pointerType==='mouse')return;pointerStart={x:event.clientX,y:event.clientY};dragState={x:event.clientX,y:event.clientY,moved:false};try{canvas.setPointerCapture(event.pointerId)}catch{}},{passive:true});
+  canvas.addEventListener('pointermove',event=>{if(!dragState||!event.buttons)return;const dx=event.clientX-dragState.x,dy=event.clientY-dragState.y;if(Math.abs(dx)+Math.abs(dy)>2)dragState.moved=true;cameraYaw-=dx*.006;cameraPitch=THREE.MathUtils.clamp(cameraPitch+dy*.004,.14,.86);dragState.x=event.clientX;dragState.y=event.clientY;});
   canvas.addEventListener('pointerup',event=>{
-    if(!pointerStart||Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y)>9){pointerStart=null;return;}
-    pointerStart=null;
+    if(!pointerStart||dragState?.moved||Math.hypot(event.clientX-pointerStart.x,event.clientY-pointerStart.y)>9){pointerStart=null;dragState=null;return;}
+    pointerStart=null;dragState=null;
     const rect=canvas.getBoundingClientRect();
     if(!rect.width||!rect.height)return;
     pointerNdc.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
@@ -525,6 +534,13 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }
   });
 
+  canvas.addEventListener('dblclick',event=>{
+    const rect=canvas.getBoundingClientRect();pointerNdc.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);pointerRaycaster.setFromCamera(pointerNdc,camera);
+    if(pointerRaycaster.intersectObjects([cardGroup,chipsGroup],true).length)return;
+    animateHeroAction('TABLE TAP');
+  });
+  canvas.addEventListener('wheel',event=>{event.preventDefault();cameraDistance=THREE.MathUtils.clamp(cameraDistance+event.deltaY*.006,5.4,10.5);},{passive:false});
+
   function resize(){
     const r=root.getBoundingClientRect(),w=Math.max(320,r.width),h=Math.max(480,Math.min(720,r.height-80||620));
     renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
@@ -551,10 +567,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       );
       if(p>=1)cardFlights.splice(i,1);
     }
-    camera.position.x=Math.sin(t*.12)*.025;
-    camera.position.y=2.15+Math.sin(t*.17)*.004;
-    camera.lookAt(0,.12,.05);
-    if(!heroActionStart){heroArm.position.set(.42+Math.sin(t*.7)*.018,.32+Math.sin(t*1.1)*.012,2.9+Math.sin(t*.6)*.025);heroArm.rotation.z=Math.sin(t*.5)*.012;}
+    camera.position.set(Math.sin(cameraYaw)*cameraDistance, cameraTarget.y+Math.sin(cameraPitch)*cameraDistance+Math.sin(t*.17)*.004, Math.cos(cameraYaw)*cameraDistance);
+    camera.lookAt(cameraTarget);
+    if(heroTapStart){const elapsed=now-heroTapStart;const tap=elapsed<440?Math.max(0,Math.sin(elapsed/110*Math.PI)):0;heroArm.visible=elapsed<440;heroArm.position.set(.42,.32-tap*.1,2.9-tap*.58);if(elapsed>=440)heroTapStart=0;}
+    else if(!heroActionStart){heroArm.position.set(.42+Math.sin(t*.7)*.018,.32+Math.sin(t*1.1)*.012,2.9+Math.sin(t*.6)*.025);heroArm.rotation.z=Math.sin(t*.5)*.012;}
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
       const reach=p<.48?p/.48:1-(p-.48)/.52;
