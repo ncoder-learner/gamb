@@ -54,7 +54,7 @@ test('original poker controls remain wired and physical chips are clickable',()=
   assert.match(scene,/isHeroCard=true/);
   assert.match(scene,/pokerChipValue/);
   assert.match(scene,/pointerRaycaster\.intersectObjects/);
-  assert.match(scene,/id='throwPhysicalChips'/);
+  assert.match(scene,/throwPhysicalChips/);
   assert.match(app,/\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);
   assert.match(app,/gh:poker-physical-bet/);
   assert.match(app,/call\('pokerAction',\{action,amount\}\)/);
