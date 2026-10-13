@@ -236,14 +236,18 @@ function boardTexture(board){
 function estimateEquity(p,room,trials=160){
   const opponents=room.players.filter(q=>q.id!==p.id&&!q.folded&&!q.allIn&&(q.chips+q.bet>0)&&(q.connected||q.bot));
   if(!p.hole.length||!opponents.length)return .5;
-  const board=room.poker.community.slice(),known=new Set([...p.hole,...board].map(cardText));
+  const board=room.poker.community.slice();
+  const known=new Set([...p.hole,...board].map(cardText));
   const unseen=SUITS.flatMap(s=>RANKS.map(r=>({r,s}))).filter(c=>!known.has(cardText(c)));
   let share=0;
   for(let t=0;t<trials;t++){
-    const deck=unseen.slice(),draw=()=>deck.splice(crypto.randomInt(deck.length),1)[0];
+    const deck=unseen.slice();
+    const draw=()=>deck.splice(crypto.randomInt(deck.length),1)[0];
     const opponentHands=opponents.map(()=>[draw(),draw()]);
-    const runout=board.slice();while(runout.length<5)runout.push(draw());
-    const hero=eval7([...p.hole,...runout]);let best=hero,heroWins=true,ties=1;
+    const runout=board.slice();
+    while(runout.length<5)runout.push(draw());
+    const hero=eval7([...p.hole,...runout]);
+    let best=hero,heroWins=true,ties=1;
     for(const cards of opponentHands){
       const score=eval7([...cards,...runout]),c=cmp(score,best);
       if(c>0){best=score;heroWins=false;ties=1}
