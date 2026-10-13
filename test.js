@@ -45,15 +45,17 @@ test('immersive labels depth-test against cards and real CC0 wood maps are confi
   assert.match(s,/wood_floor|floorMat/);
 });
 
-test('first-person poker cards and chip betting are wired to authoritative actions',()=>{
+test('simplified chip picker and poker betting are wired to authoritative actions',()=>{
   const scene=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
-  assert.match(scene,/card\.position\.set\(x,\.145,z\)/);
-  assert.match(scene,/function setHeroPeek\(open\)/);
-  assert.match(scene,/interactiveChip=true/);
-  assert.match(scene,/throwStagedChipPicks/);
-  assert.match(scene,/DOUBLE-CLICK FELT TO CHECK/);
+  assert.match(scene,/className='chip-control'/);
+  assert.match(scene,/CHIP PILE/);
+  assert.match(scene,/data-chip-preset="call"/);
+  assert.match(scene,/data-chip-preset="allin"/);
+  assert.match(scene,/id="throwStagedChips"/);
+  assert.match(scene,/roundedCardShape\(\.84,1\.13/);
   assert.match(app,/request\.action==='throw-in'/);
+  assert.match(app,/gh:poker-bet-state/);
   assert.match(app,/call\('pokerAction',\{action,amount\}\)/);
   assert.match(app,/gh:poker-action-result/);
 });
