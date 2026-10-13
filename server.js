@@ -257,6 +257,25 @@ function estimateEquity(p,room,trials=160){
   }
   return share/trials;
 }
+function preflopStrength(hole){
+  if(!hole||hole.length!==2)return .5;
+  const a=rv(hole[0].r),b=rv(hole[1].r),hi=Math.max(a,b),lo=Math.min(a,b);
+  const pair=a===b,suited=hole[0].s===hole[1].s,gap=hi-lo;
+  let score=pair?.48+(hi-2)*.035:.12+(hi-2)*.025+(lo-2)*.012;
+  if(suited)score+=.055;
+  if(gap===1)score+=.045;else if(gap===2)score+=.02;else if(gap>=5)score-=.08;
+  if(hi>=12&&lo>=10)score+=.07;
+  return Math.max(.05,Math.min(.97,score));
+}
+function boardTexture(board){
+  if(!board.length)return {wet:false};
+  const suits={};board.forEach(c=>suits[c.s]=(suits[c.s]||0)+1);
+  const ranks=board.map(c=>rv(c.r));
+  const uniq=[...new Set([...ranks,...(ranks.includes(14)?[1]:[])])].sort((a,b)=>a-b);
+  let straightDraw=false;
+  for(let i=0;i<uniq.length;i++)if(uniq.filter(v=>v>=uniq[i]&&v<=uniq[i]+4).length>=3){straightDraw=true;break}
+  return {wet:Object.values(suits).some(n=>n>=3)||straightDraw||new Set(ranks).size<ranks.length};
+}
 function botTick(room){
   if(!rooms.has(room.code))return;
   if(room.game==='poker'&&room.turnPlayerId){
@@ -269,38 +288,29 @@ function botTick(room){
         const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;
         const call=required(room,p),pot=Math.max(1,room.poker.pot),potOdds=call/(pot+call);
         const preflop=room.poker.community.length===0;
-        const equity=estimateEquity(p,room,preflop?110:190);
+        const equity=estimateEquity(p,room,preflop?100:180);
         const strength=preflop?preflopStrength(p.hole):equity;
         const texture=boardTexture(room.poker.community);
         const r=crypto.randomInt(10000)/10000;
         const minTo=room.poker.highestBet+room.poker.minRaise,maxTo=p.bet+p.chips;
         const canRaise=maxTo>=minTo&&p.chips>0;
         const position=(room.players.indexOf(p)-room.poker.dealerIndex+room.players.length)%Math.max(1,room.players.length);
-        const positionalBonus=position<=1?.035:position>=room.players.length-2?-.015:0;
-        const adjusted=strength+positionalBonus;
-        const riskTolerance=(cfg.aggression-.5)*.12+(cfg.tight<.5?.035:-.025);
-        const foldThreshold=Math.max(.08,potOdds+.025-riskTolerance);
-        const bluffChance=cfg.bluff*(preflop?.12:.30)*(texture.wet?.65:1);
+        const adjusted=Math.max(.02,Math.min(.99,strength+(position<=1?.035:position>=room.players.length-2?-.015:0)));
+        const bluffChance=cfg.bluff*(preflop?.10:.28)*(texture.wet?.65:1);
+        const foldThreshold=Math.max(.08,potOdds+.025+(cfg.tight-.5)*.08-(cfg.aggression-.5)*.08);
         let action=call?'call':'check',amount;
-        const strong=adjusted>=Math.max(.60,potOdds+.22);
-        const medium=adjusted>=Math.max(.30,potOdds-.06);
-        const facingLargeBet=call>pot*.72;
         if(call>0){
           if(adjusted<foldThreshold&&r>bluffChance)action='fold';
-          else if(canRaise&&strong&&r<cfg.aggression*.72){action='raise';amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*(adjusted>.82?.78:.52)))))}
-          else if(canRaise&&adjusted>.52&&r<cfg.aggression*.13){action='raise';amount=minTo}
-          else if(facingLargeBet&&adjusted<potOdds+.10&&r>bluffChance*.5)action='fold';
-          else if(medium||r<bluffChance)action='call';
+          else if(canRaise&&adjusted>=Math.max(.64,potOdds+.24)&&r<cfg.aggression*.72){
+            action='raise';amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*(adjusted>.82?.75:.5)))));
+          }else if(canRaise&&adjusted>.52&&r<cfg.aggression*.12){action='raise';amount=minTo}
+          else if(call>pot*.72&&adjusted<potOdds+.10&&r>bluffChance*.5)action='fold';
+          else if(adjusted>=Math.max(.28,potOdds-.06)||r<bluffChance)action='call';
           else action='fold';
-        }else{
-          const valueBet=adjusted>=.57&&r<(.24+cfg.aggression*.52);
-          const semiBluff=texture.wet&&adjusted>=.28&&r<bluffChance;
-          const pressureBluff=!preflop&&adjusted>=.18&&r<bluffChance*.55&&room.poker.phase!=='RIVER';
-          if(canRaise&&(valueBet||semiBluff||pressureBluff)){
-            action='raise';
-            const fraction=adjusted>.82?.72:adjusted>.65?.55:.42;
-            amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*fraction))));
-          }
+        }else if(canRaise&&((adjusted>=.58&&r<(.22+cfg.aggression*.5))||(texture.wet&&adjusted>=.28&&r<bluffChance)||(!preflop&&adjusted>=.18&&r<bluffChance*.5&&room.poker.phase!=='RIVER'))){
+          action='raise';
+          const fraction=adjusted>.82?.72:adjusted>.65?.55:.42;
+          amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*fraction))));
         }
         if(action==='raise'&&(!Number.isFinite(amount)||amount<minTo||amount>maxTo))action=call?'call':'check';
         pokerAction(room,p,action,amount);
