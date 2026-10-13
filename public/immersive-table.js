@@ -392,6 +392,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     gameType=bjVisible?'blackjack':'poker';
     chipControl.style.display=gameType==='poker'?'flex':'none';
     const phase=(document.querySelector('#streetChip')?.textContent||document.querySelector('#bjActions .turn-badge')?.textContent||'TABLE OPEN').trim();
+    if(gameType==='poker'&&['SHOWDOWN','WAITING','TABLE OPEN'].includes(phase.toUpperCase()))setHeroPeek(false);
     const phaseEl=document.querySelector('#scenePhase');if(phaseEl)phaseEl.textContent=phase;
     const cards=gameType==='blackjack'
       ? [...getCards('#dealerCards'),...getCards('#bjHands .bj-hand .cards')]
