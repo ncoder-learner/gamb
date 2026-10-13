@@ -461,6 +461,46 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     canvas.style.width='100%';canvas.style.height=h+'px';
   }
   const resizeObserver=new ResizeObserver(resize);resizeObserver.observe(root);window.addEventListener('resize',resize);
+  function ignoredSceneTarget(target){return !!target.closest('button,input,select,textarea,.actionbar,.chip-control,.modal,.topbar');}
+  function sceneHit(event){
+    const rect=canvas.getBoundingClientRect();
+    if(event.clientX<rect.left||event.clientX>rect.right||event.clientY<rect.top||event.clientY>rect.bottom)return {};
+    pointerNdc.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
+    pointerRaycaster.setFromCamera(pointerNdc,camera);
+    const hits=pointerRaycaster.intersectObjects([...cardGroup.children,...chipsGroup.children],true);
+    for(const hit of hits){
+      let node=hit.object;
+      while(node&&node!==scene){
+        if(node.userData?.isHeroCard)return {heroCard:node};
+        if(node.userData?.interactiveChip)return {chip:node};
+        node=node.parent;
+      }
+    }
+    return {};
+  }
+  root.addEventListener('click',event=>{
+    if(ignoredSceneTarget(event.target)||event.detail>1)return;
+    const hit=sceneHit(event);
+    if(hit.heroCard){setHeroPeek(!peekOpen);return;}
+    if(hit.chip){stagedChipAmount+=hit.chip.userData.chipValue;updateStagedChips();return;}
+  },true);
+  root.addEventListener('dblclick',event=>{
+    if(ignoredSceneTarget(event.target))return;
+    const hit=sceneHit(event);
+    if(hit.heroCard||hit.chip)return;
+    document.dispatchEvent(new CustomEvent('gh:poker-action',{detail:{action:'check'}}));
+  },true);
+  root.addEventListener('pointerdown',event=>{
+    if(ignoredSceneTarget(event.target))return;
+    lookDrag={id:event.pointerId,x:event.clientX,y:event.clientY,startX:lookTargetX,startY:lookTargetY,moved:false};
+  },true);
+  root.addEventListener('pointermove',event=>{
+    if(!lookDrag||lookDrag.id!==event.pointerId)return;
+    const rect=root.getBoundingClientRect(),dx=event.clientX-lookDrag.x,dy=event.clientY-lookDrag.y;
+    if(Math.abs(dx)+Math.abs(dy)>5)lookDrag.moved=true;
+    if(lookDrag.moved){lookTargetX=THREE.MathUtils.clamp(lookDrag.startX-dx/Math.max(1,rect.width)*1.8,-1,1);lookTargetY=THREE.MathUtils.clamp(lookDrag.startY+dy/Math.max(1,rect.height)*1.2,-.8,.8);}
+  },true);
+  const stopLook=()=>{lookDrag=null};root.addEventListener('pointerup',stopLook,true);root.addEventListener('pointercancel',stopLook,true);
   const observer=new MutationObserver(()=>{if(performance.now()-lastRender>80){lastRender=performance.now();syncScene()}});
   observer.observe(root,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style']});
   resize();syncScene(true);
@@ -473,17 +513,28 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const f=cardFlights[i];if(now<f.start)continue;
       const p=Math.min(1,(now-f.start)/f.duration),ease=1-Math.pow(1-p,3);
       f.card.position.lerpVectors(new THREE.Vector3(0,.72,-2.35),f.targetPosition,ease);
-      f.card.position.y+=Math.sin(p*Math.PI)*.34;
+      f.card.position.y+=Math.sin(p*Math.PI)*.22;
       f.card.rotation.set(
         THREE.MathUtils.lerp(-Math.PI/2+.95,f.targetRotation.x,ease),
         THREE.MathUtils.lerp(0,f.targetRotation.y,ease),
-        THREE.MathUtils.lerp(0,f.targetRotation.z,ease)+Math.sin(p*Math.PI)*.08
+        THREE.MathUtils.lerp(0,f.targetRotation.z,ease)+Math.sin(p*Math.PI)*.035
       );
       if(p>=1)cardFlights.splice(i,1);
     }
-    camera.position.x=Math.sin(t*.12)*.025;
+    for(const card of cardGroup.children){
+      if(!card.userData.isHeroCard)continue;
+      const d=card.userData;d.peekProgress+=(d.peekTarget-d.peekProgress)*.16;
+      const p=d.peekProgress,ease=p*p*(3-2*p);
+      const peekPosition=d.basePosition.clone().add(new THREE.Vector3(d.basePosition.x*.12,.92,1.05));
+      card.position.lerpVectors(d.basePosition,peekPosition,ease);
+      card.rotation.order='YXZ';
+      card.rotation.set(THREE.MathUtils.lerp(d.baseRotation.x,-Math.PI/2+.82,ease),d.baseRotation.y,0);
+      if(!peekOpen&&p<.08&&d.face.material.map!==d.backTexture){d.face.material.map=d.backTexture;d.face.material.needsUpdate=true;}
+    }
+    camera.position.x=Math.sin(t*.12)*.012;
     camera.position.y=2.15+Math.sin(t*.17)*.004;
-    camera.lookAt(0,.12,.05);
+    lookX+=(lookTargetX-lookX)*.08;lookY+=(lookTargetY-lookY)*.08;
+    camera.lookAt(lookX*1.35,.12+lookY*.32,.05-Math.abs(lookX)*.08);
     if(!heroActionStart){heroArm.position.set(.42+Math.sin(t*.7)*.018,.32+Math.sin(t*1.1)*.012,2.9+Math.sin(t*.6)*.025);heroArm.rotation.z=Math.sin(t*.5)*.012;}
     if(heroActionStart){
       const p=Math.min(1,(now-heroActionStart)/620);
