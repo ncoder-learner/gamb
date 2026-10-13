@@ -172,28 +172,31 @@ $$('.game-tab').forEach(b=>b.onclick=()=>call('setGame',{game:b.dataset.game}).t
 $('#startBtn').onclick=async()=>{const entryBet=state?.game==='chess'?Math.max(0,Number($('#chessWager')?.value||0)):0;const r=await call('startGame',{entryBet});if(!r.ok)toast(r.error);};
 $('#addBotBtn').onclick=()=>openModal(`<span class="eyebrow">SERVER-SIDE BOTS</span><h2>Add a bot</h2><p class="modal-sub">Bots play on the server using the same legal actions as humans.</p><div class="bot-grid">${Object.entries({Ace:'Tight / conservative',Shark:'Aggressive / pressure',Bluff:'Frequent bluffs',Lucky:'Loose / call-heavy',Dealer:'Low variance',River:'Balanced',Pocket:'Tight-aggressive',Wildcard:'Unpredictable'}).map(([n,d])=>`<button class="bot-option" data-bot="${n}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`);
 document.addEventListener('click',e=>{const b=e.target.closest('[data-bot]');if(b)call('addBot',{type:b.dataset.bot}).then(r=>{if(!r.ok)toast(r.error);else closeModal()})});
-document.addEventListener('gh:poker-action',async event=>{
- const request=event.detail||{},mine=mePlayer(),p=state?.poker||{};
- const failThrow=message=>{toast(message);document.dispatchEvent(new CustomEvent('gh:poker-action-result',{detail:{ok:false}}))};
- if(!state||state.game!=='poker'){if(request.action==='throw-in')failThrow('The poker table is not active.');return}
- if(state.turnPlayerId!==mine?.id){if(request.action==='throw-in')failThrow("It's not your turn.");else toast("It's not your turn.");return}
- if(request.action==='check'){
-   if($('#callBtn')?.dataset.action!=='check'){toast('A call is due. Use CALL or stage enough chips to raise.');return}
-   const r=await call('pokerAction',{action:'check'});if(!r.ok)toast(r.error);return;
+$
+document.addEventListener('gh:poker-physical-bet',async event=>{
+ const mine=mePlayer(),p=state?.poker||{},contribution=Math.floor(Number(event.detail?.contribution)||0);
+ const fail=message=>{toast(message);document.dispatchEvent(new CustomEvent('gh:poker-physical-bet-result',{detail:{ok:false}}));};
+ if(!state||state.game!=='poker')return fail('The poker table is not active.');
+ if(state.turnPlayerId!==mine?.id)return fail("It's not your turn.");
+ const stack=Math.max(0,Number(mine?.chips)||0),myBet=Math.max(0,Number(mine?.bet)||0),toCall=Math.max(0,Number(p.highestBet||0)-myBet);
+ if(contribution<=0)return fail('Click a physical chip stack to select chips.');
+ if(stack<=0)return fail('You have no chips left to bet.');
+ if(contribution>=stack){
+   const r=await call('pokerAction',{action:'allin'});
+   if(!r.ok)return fail(r.error);
+ }else if(toCall>0&&contribution===toCall){
+   const r=await call('pokerAction',{action:'call'});
+   if(!r.ok)return fail(r.error);
+ }else{
+   const amount=myBet+contribution,minTo=Number(p.highestBet||0)+Number(p.minRaise||50);
+   if(contribution<toCall)return fail('Select at least '+toCall.toLocaleString()+' chips to call.');
+   if(amount<minTo)return fail('Minimum raise is to '+minTo.toLocaleString()+'. Add more physical chips.');
+   const r=await call('pokerAction',{action:'raise',amount});
+   if(!r.ok)return fail(r.error);
  }
- if(request.action!=='throw-in')return;
- const contribution=Math.floor(Number(request.contribution)||0),stack=Math.max(0,Number(mine?.chips)||0),myBet=Math.max(0,Number(mine?.bet)||0);
- if(contribution<=0){failThrow('Click chips to stage a bet first.');return}
- if(stack<=0){failThrow('You have no chips left to bet.');return}
- const toCall=Math.max(0,Number(p.highestBet||0)-myBet);
- if(contribution<toCall&&contribution<stack){failThrow('You need '+toCall.toLocaleString()+' chips to call, or choose ALL-IN.');return}
- let action,amount;
- if(contribution>=stack)action='allin';
- else if(toCall>0&&contribution===toCall)action='call';
- else {action='raise';amount=myBet+contribution}
- const r=await call('pokerAction',{action,amount});
- if(!r.ok)failThrow(r.error);else document.dispatchEvent(new CustomEvent('gh:poker-action-result',{detail:{ok:true}}));
+ document.dispatchEvent(new CustomEvent('gh:poker-physical-bet-result',{detail:{ok:true}}));
 });
+
 $('[data-action]').forEach(b=>b.onclick=()=>{let amount=Number($('#raiseAmount').value);call('pokerAction',{action:b.dataset.action,amount}).then(r=>{if(!r.ok)toast(r.error)})});
 $$('[data-bj]').forEach(b=>b.onclick=()=>call('blackjackAction',{action:b.dataset.bj}).then(r=>{if(!r.ok)toast(r.error)}));$('#bjBetBtn').onclick=()=>{const amount=Number($('#bjBet').value);call('blackjackBet',{amount}).then(r=>{if(!r.ok)toast(r.error);else{toast(`Bet placed · ${amount.toLocaleString()} virtual tokens`);$('#bjBet').value='';}})};
 $('#spinBtn').onclick=()=>call('rouletteSpin',{}).then(r=>{if(!r.ok)toast(r.error)});
