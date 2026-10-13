@@ -519,8 +519,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       if(!physicalBetState.myTurn)return;
       selectedPhysicalBet=Math.min(Math.max(0,physicalBetState.stack),selectedPhysicalBet+value);
       updatePhysicalBetUi();
-      target.position.y+=.025;
-      setTimeout(()=>{if(target?.position)target.position.y=Math.max(.17,target.position.y-.025)},130);
+      const originalY=target.position.y;
+      target.position.y=originalY+.025;
+      setTimeout(()=>{if(target?.position)target.position.y=originalY},130);
     }
   });
 
