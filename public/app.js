@@ -105,6 +105,10 @@ function renderPoker(){
  if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
  const strength=$('#myHandStrength');if(strength){const current=state.me?.currentHand;strength.textContent=current||(phase==='PREFLOP'?'PRE-FLOP · TWO PRIVATE CARDS':'HAND IN PROGRESS');strength.classList.toggle('live',!!current);strength.classList.toggle('turn',myTurn&&phase!=='HAND_COMPLETE');}
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
+ document.dispatchEvent(new CustomEvent('gh:poker-bet-state',{detail:{
+   myTurn,stack:Math.max(0,Number(mine?.chips)||0),toCall,
+   minContribution:Math.max(1,Number(p.highestBet||0)+Number(p.minRaise||50)-Number(mine?.bet||0))
+ }}));
  if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
  if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE'}
