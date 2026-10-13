@@ -35,7 +35,79 @@ socket.on('connect',async()=>{renderConnection(true);await loadAccount();const s
 socket.on('devRoomReset',x=>{state=null;me=null;roomCode='';localStorage.removeItem('gh_session');showScreen('home');toast(x?.message||'Live rooms were reset by a developer.')});
 socket.on('disconnect',()=>renderConnection(false));socket.on('connect_error',()=>renderConnection(false));
 socket.on('joinRequest',x=>{pendingJoinRequest=x;openModal('<span class="eyebrow">TABLE REQUEST</span><h2>'+esc(x.name)+' wants to join</h2><p class="modal-sub">'+esc(x.name)+' is asking to sit at table '+esc(x.code)+'.</p><div class="home-actions"><button class="btn primary" id="acceptJoin">LET THEM IN</button><button class="btn danger" id="declineJoin">DECLINE</button></div>');$('#acceptJoin').onclick=()=>respondJoin(true);$('#declineJoin').onclick=()=>respondJoin(false)});socket.on('joinRequestResult',async r=>{pendingJoinRequest=null;if(!r.ok){toast(r.error||'Join request declined.');return}roomCode=r.code||roomCode;me={...(me||{}),reconnectToken:r.reconnectToken||me?.reconnectToken};saveSession();const rebound=await call('resumeRoom',{code:roomCode,reconnectToken:me.reconnectToken});if(!rebound.ok){toast(rebound.error||'Accepted, but reconnect failed. Refresh and try again.');return}showScreen('lobby');toast('Accepted. You joined the existing table lobby.')});
-socket.on('state',s=>{state=s;roomCode=s.code||roomCode;me={...(me||{}),...(s.me||{})};if(s.me?.reconnectToken)saveSession();if(s.code){$('#roomCode').textContent=s.code;$('#gameRoom').textContent=s.code}renderAll()});
+socket.on('state',s=>{state=s;roomCode=s.code||roomCode;me={...(me||{}),...(s.me||{})};if(s.me?.reconnectToken)saveSession();if(s.code){$('#roomCode').textContent=s.code;$('#gameRoom').textContent=s.code}renderAll();updateFunFeatures(s)});
+
+const FUN_KEY='gh_fun_progress_v1';
+let funSnapshot=null,funPanelOpen=false,funAudioContext=null;
+function funLoad(){try{return JSON.parse(localStorage.getItem(FUN_KEY)||'{}')}catch{return {}}}
+function funSave(v){localStorage.setItem(FUN_KEY,JSON.stringify(v))}
+function ensureFunPanel(){
+ if($('#funDock'))return;
+ const dock=document.createElement('section');dock.id='funDock';dock.innerHTML='<button id="funToggle" class="fun-toggle" aria-expanded="false">✦ PLAY BETTER</button><div id="funPanel" class="fun-panel" hidden><div class="fun-head"><b>GAME HUB</b><button id="funClose" aria-label="Close">×</button></div><div class="fun-tabs"><button data-fun-tab="challenges" class="active">Challenges</button><button data-fun-tab="coach">Coach</button><button data-fun-tab="recap">Recap</button><button data-fun-tab="social">Emotes</button></div><div id="funBody"></div><div class="fun-foot"><label><input id="funSound" type="checkbox"> Round sounds</label><button id="funTheme">Change table accent</button></div></div>';
+ document.body.appendChild(dock);
+ $('#funToggle').onclick=()=>{funPanelOpen=!funPanelOpen;$('#funPanel').hidden=!funPanelOpen;$('#funToggle').setAttribute('aria-expanded',String(funPanelOpen));if(funPanelOpen)renderFunTab('challenges')};
+ $('#funClose').onclick=()=>{funPanelOpen=false;$('#funPanel').hidden=true;$('#funToggle').setAttribute('aria-expanded','false')};
+ $('#funPanel [data-fun-tab]').forEach(b=>b.onclick=()=>renderFunTab(b.dataset.funTab));
+ $('#funSound').checked=localStorage.getItem('gh_fun_sound')==='1';
+ $('#funSound').onchange=()=>localStorage.setItem('gh_fun_sound',$('#funSound').checked?'1':'0');
+ $('#funTheme').onclick=()=>{const next=localStorage.getItem('gh_fun_accent')==='gold'?'blue':'gold';localStorage.setItem('gh_fun_accent',next);document.documentElement.dataset.funAccent=next;toast('Table accent changed.')};
+ document.documentElement.dataset.funAccent=localStorage.getItem('gh_fun_accent')||'blue';
+}
+function funPlaySound(){
+ if(localStorage.getItem('gh_fun_sound')!=='1')return;
+ try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;funAudioContext=funAudioContext||new C();const osc=funAudioContext.createOscillator(),gain=funAudioContext.createGain();osc.type='sine';osc.frequency.value=660;gain.gain.value=.045;osc.connect(gain);gain.connect(funAudioContext.destination);osc.start();osc.stop(funAudioContext.currentTime+.12)}catch{}
+}
+function funToday(){return new Date().toISOString().slice(0,10)}
+function updateFunFeatures(s){
+ ensureFunPanel();
+ const p=funLoad(),today=funToday();
+ if(p.day!==today){p.day=today;p.roundsToday=0;p.winsToday=0;p.gamesToday=[]}
+ const game=s.game||'unknown',mine=s.me?.id,phase=game==='poker'?s.poker?.phase:game==='blackjack'?s.blackjack?.phase:game==='roulette'?s.roulette?.phase:s.chess?.winners?.length?'RESULT':'';
+ const marker=game==='poker'?(s.poker?.handNo||0)+':'+phase:game==='blackjack'?phase+':'+Object.values(s.blackjack?.hands||{}).map(h=>h.result||'').join(','):game==='roulette'?phase+':'+JSON.stringify(s.roulette?.result||null):phase+':'+JSON.stringify(s.chess?.winners||[]);
+ const prev=funSnapshot;
+ if(prev&&prev.code===s.code&&prev.game===game&&prev.marker!==marker){
+   const resultReady=(game==='poker'&&s.poker?.phase==='HAND_COMPLETE')||(game==='blackjack'&&s.blackjack?.phase==='RESULT')||(game==='roulette'&&s.roulette?.phase==='RESULT')||(game==='chess'&&Array.isArray(s.chess?.winners)&&s.chess.winners.length>0);
+   if(resultReady&&prev.marker!==marker){
+     p.roundsToday=(p.roundsToday||0)+1;if(!p.gamesToday.includes(game))p.gamesToday.push(game);
+     let won=false,summary='';
+     if(game==='poker'){won=(s.poker?.winners||[]).some(w=>w.id===mine);const w=(s.poker?.winners||[]).map(w=>s.players.find(x=>x.id===w.id)?.name+' · '+(w.hand||'won pot')).filter(Boolean);summary=won?'You won the poker hand.':(w.join(', ')||'Poker hand completed.')}
+     else if(game==='blackjack'){const h=s.blackjack?.hands?.[mine];won=h?.result==='win'||h?.result==='blackjack';summary='Your total: '+(h?.total??'—')+'. Dealer total: '+(s.blackjack?.dealer||[]).filter(c=>c!=='??').join(' ') + (h?.result?' · '+h.result:'')}
+     else if(game==='roulette'){const wins=(s.roulette?.result?.winners||[]).some(w=>w.playerId===mine);won=wins;summary='Spin result: '+JSON.stringify(s.roulette?.result??'completed')}
+     else {won=(s.chess?.winners||[]).includes(mine);summary=won?'You won the chess game.':'Chess game completed.'}
+     if(won)p.winsToday=(p.winsToday||0)+1;
+     p.lastRecap={game,won,summary,at:Date.now()};
+     p.achievements=p.achievements||{};
+     if(p.roundsToday>=3)p.achievements.threeRounds=true;
+     if(won)p.achievements.firstWin=true;
+     if(p.gamesToday.length>=2)p.achievements.variety=true;
+     funSave(p);funPlaySound();
+     if(funPanelOpen)renderFunTab('recap');
+   }
+ }
+ funSnapshot={code:s.code,game,marker};
+}
+function renderFunTab(tab){
+ ensureFunPanel();$('#funPanel [data-fun-tab]').forEach(b=>b.classList.toggle('active',b.dataset.funTab===tab));
+ const body=$('#funBody'),p=funLoad(),game=state?.game||'poker';
+ if(tab==='challenges'){
+  const rounds=p.roundsToday||0,wins=p.winsToday||0,ach=p.achievements||{};
+  body.innerHTML='<p class="fun-intro">Complete small goals while you play. Progress is saved in this browser.</p><div class="fun-challenge"><b>Warm-up</b><span>'+rounds+'/3 rounds today</span><i><em style="width:'+Math.min(100,rounds/3*100)+'%"></em></i></div><div class="fun-challenge"><b>First win</b><span>'+(wins?'Complete':'Win any round')+'</span><i><em style="width:'+(wins?100:0)+'%"></em></i></div><div class="fun-challenge"><b>Game explorer</b><span>'+(p.gamesToday||[]).length+'/2 game types</span><i><em style="width:'+Math.min(100,(p.gamesToday||[]).length/2*100)+'%"></em></i></div><h4>Achievements</h4><div class="fun-achievements"><span class="'+(ach.threeRounds?'earned':'')+'">3-round streak</span><span class="'+(ach.firstWin?'earned':'')+'">First win</span><span class="'+(ach.variety?'earned':'')+'">Game explorer</span></div>';
+ }else if(tab==='coach'){
+  const meP=state?.players?.find(x=>x.id===state?.me?.id),call=Math.max(0,Number(state?.poker?.highestBet||0)-Number(meP?.bet||0)),pot=Number(state?.poker?.pot||0),hand=state?.me?.currentHand||'Waiting for cards';
+  let advice='Wait for a hand to begin to get a contextual tip.';
+  if(game==='poker'&&state?.status==='IN_GAME'){if(call===0)advice=/Pair|Two Pair|Three|Straight|Flush|Full House|Four|Royal/i.test(hand)?'You have made a hand. Consider value betting when weaker hands can call.':'You can check for free; avoid building a large pot with only high card.';else advice=call/(pot+call)>.33?'The call is expensive relative to the current pot. Continue mainly with strong hands or meaningful draw potential.':'The pot price is relatively favorable; compare your hand strength and likely outs before calling.'}
+  if(game==='blackjack'&&state?.blackjack?.hands?.[state?.me?.id]){const h=state.blackjack.hands[state.me.id];advice='Your total is '+h.total+'. Basic rule: stand on hard 17+, hit hard 11 or less; soft totals depend on the dealer up-card.'}
+  if(game==='roulette')advice='Roulette is random; no bet type predicts the next spin. Choose stakes for entertainment, not as a way to beat the odds.';
+  body.innerHTML='<p class="fun-intro">Quick strategy coach · informational, not a guarantee.</p><div class="fun-coach"><small>TABLE</small><b>'+esc(game.toUpperCase())+'</b><small>YOUR CURRENT HAND</small><b>'+esc(hand)+'</b><p>'+esc(advice)+'</p></div>';
+ }else if(tab==='recap'){
+  const r=p.lastRecap;
+  body.innerHTML=r?'<div class="fun-recap '+(r.won?'won':'lost')+'"><small>'+esc(r.game.toUpperCase())+' · '+new Date(r.at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+'</small><h3>'+(r.won?'ROUND WON':'ROUND COMPLETE')+'</h3><p>'+esc(r.summary)+'</p></div><p class="fun-intro">For complete account history, open History from the main lobby.</p>':'<p class="fun-intro">Your last round recap will appear here after a game finishes.</p>';
+ }else{
+  body.innerHTML='<p class="fun-intro">Send a quick reaction to everyone at this table.</p><div class="fun-emotes">'+['👏','😎','🔥','🤔','💀','GG'].map(e=>'<button data-emote="'+e+'">'+e+'</button>').join('')+'</div><p class="fun-intro">Reactions use table chat and do not affect gameplay.</p>';
+  $('[data-emote]').forEach(b=>b.onclick=()=>call('chat',{text:b.dataset.emote}).then(r=>{if(!r.ok)toast(r.error);else toast('Reaction sent.')}));
+ }
+}
+
 function renderAll(){if(!state){renderAccount();return;}$('#playerCount').textContent=state.players.length;renderPlayers();renderChat();if(state.status==='IN_GAME'){showScreen('game');renderGame()}else{showScreen('lobby');renderLobby()}}
 function renderLobby(){renderAccount();const mine=mePlayer();$$('.game-tab').forEach(b=>b.classList.toggle('active',b.dataset.game===state.game));const canHost=mine?.host;$('#startBtn').disabled=!canHost;$('#addBotBtn').disabled=!canHost;const startLabel=state.game==='poker'?'START POKER':state.game==='blackjack'?'START BLACKJACK':state.game==='roulette'?'OPEN ROULETTE':'START CHESS';$('#startBtn').textContent=startLabel}
 function renderPlayers(){
