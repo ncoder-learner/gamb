@@ -55,14 +55,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   chipControl.className='chip-control';
   chipControl.innerHTML='<div class="staged-copy"><span>STAGED BET</span><strong id="stagedChipAmount">0</strong></div><button id="throwStagedChips" type="button">THROW IN</button><button id="clearStagedChips" class="secondary" type="button">CLEAR</button><div class="chip-hint">CLICK CHIPS TO BUILD · DOUBLE-CLICK FELT TO CHECK</div>';
   root.appendChild(chipControl);
-  let stagedChipAmount=0;
+  let stagedChipAmount=0,stagedChipPicks=[],stagedActionPending=false;
   const stagedAmountEl=chipControl.querySelector('#stagedChipAmount');
   const throwStagedButton=chipControl.querySelector('#throwStagedChips');
   const clearStagedButton=chipControl.querySelector('#clearStagedChips');
   function updateStagedChips(){stagedAmountEl.textContent=stagedChipAmount.toLocaleString();throwStagedButton.disabled=stagedChipAmount<=0;}
   clearStagedButton.addEventListener('click',()=>{stagedChipAmount=0;updateStagedChips()});
-  throwStagedButton.addEventListener('click',()=>{if(stagedChipAmount>0)document.dispatchEvent(new CustomEvent('gh:poker-action',{detail:{action:'throw-in',contribution:stagedChipAmount}}))});
-  document.addEventListener('gh:poker-action-result',e=>{if(e.detail?.ok){stagedChipAmount=0;updateStagedChips()}});
+  throwStagedButton.addEventListener('click',()=>{if(stagedChipAmount>0){stagedActionPending=true;document.dispatchEvent(new CustomEvent('gh:poker-action',{detail:{action:'throw-in',contribution:stagedChipAmount}}))}});
+  document.addEventListener('gh:poker-action-result',e=>{
+    stagedActionPending=false;
+    if(e.detail?.ok){throwStagedChipPicks(stagedChipPicks);stagedChipPicks=[];stagedChipAmount=0;updateStagedChips();}
+  });
 
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
@@ -179,7 +182,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const CHIP_VALUES=[1,5,25,100,500,1000];
   function makeChip(x,y,z,colorIndex=0,rot=0,interactive=false){
     const g=new THREE.Group();
-    if(interactive){g.userData.interactiveChip=true;g.userData.chipValue=CHIP_VALUES[colorIndex%CHIP_VALUES.length];}
+    if(interactive){g.userData.interactiveChip=true;g.userData.chipValue=CHIP_VALUES[colorIndex%CHIP_VALUES.length];g.userData.colorIndex=colorIndex%chipMaterials.length;}
     const body=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.055,32),chipMaterials[colorIndex%chipMaterials.length]);body.castShadow=true;body.receiveShadow=true;g.add(body);
     const top=new THREE.Mesh(new THREE.CylinderGeometry(.122,.122,.057,32),mat(['#f4e9d2','#e8c8c2','#c5d8ed','#d3d2ca','#f1dfa9','#c5dfcc'][colorIndex%6],.76,.01));top.position.y=.002;g.add(top);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.145,.008,5,32),chipEdge);ring.rotation.x=Math.PI/2;ring.position.y=.029;g.add(ring);
@@ -353,6 +356,16 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       movingChips.push({g,from:new THREE.Vector3(g.position.x,g.position.y,g.position.z),to:new THREE.Vector3(-.2+(i%3)*.18,.2,-.82+(i%2)*.12),start:performance.now()+i*65,duration:520+i*40});
     }
   }
+  function throwStagedChipPicks(picks){
+    picks.forEach((pick,i)=>{
+      const g=new THREE.Group(),color=pick.colorIndex%chipMaterials.length;
+      const body=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.055,32),chipMaterials[color]);body.castShadow=true;g.add(body);
+      const edge=new THREE.Mesh(new THREE.TorusGeometry(.145,.008,5,32),chipEdge);edge.rotation.x=Math.PI/2;edge.position.y=.029;g.add(edge);
+      const from=pick.from.clone().add(new THREE.Vector3((i%3-1)*.07,.06+Math.floor(i/3)*.025,0));
+      g.position.copy(from);actionFxGroup.add(g);
+      movingChips.push({g,from,to:new THREE.Vector3(-.2+(i%3)*.18,.2,-.82+(i%2)*.12),start:performance.now()+i*48,duration:540+i*35});
+    });
+  }
   let heroActionStart=0;
   function setHeroPeek(open){
     peekOpen=open;
@@ -365,7 +378,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function animateHeroAction(action){
     if(!['CALL','RAISE','ALL-IN','CHECK'].includes(String(action).toUpperCase()))return;
     heroActionStart=performance.now();heroArm.visible=true;
-    if(['CALL','RAISE','ALL-IN'].includes(String(action).toUpperCase()))throwChips(.55,3.0,action==='ALL-IN'?5:3,action==='RAISE'?4:1);
+    if(['CALL','RAISE','ALL-IN'].includes(String(action).toUpperCase())&&!stagedActionPending)throwChips(.55,3.0,action==='ALL-IN'?5:3,action==='RAISE'?4:1);
   }
   const previousActions=new Map();
   const seatGestures=new Map();
@@ -375,8 +388,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const pokerVisible=!document.querySelector('#pokerBoard')?.classList.contains('hidden');
     const bjVisible=!document.querySelector('#blackjackBoard')?.classList.contains('hidden');
     const active=pokerVisible||bjVisible;root.classList.toggle('immersive-active',active);canvas.style.display=active?'block':'none';hud.style.display=active?'flex':'none';
-    if(!active)return;
+    if(!active){chipControl.style.display='none';return}
     gameType=bjVisible?'blackjack':'poker';
+    chipControl.style.display=gameType==='poker'?'flex':'none';
     const phase=(document.querySelector('#streetChip')?.textContent||document.querySelector('#bjActions .turn-badge')?.textContent||'TABLE OPEN').trim();
     const phaseEl=document.querySelector('#scenePhase');if(phaseEl)phaseEl.textContent=phase;
     const cards=gameType==='blackjack'
@@ -484,7 +498,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     if(ignoredSceneTarget(event.target)||event.detail>1)return;
     const hit=sceneHit(event);
     if(hit.heroCard){setHeroPeek(!peekOpen);return;}
-    if(hit.chip){stagedChipAmount+=hit.chip.userData.chipValue;updateStagedChips();return;}
+    if(hit.chip){stagedChipAmount+=hit.chip.userData.chipValue;stagedChipPicks.push({value:hit.chip.userData.chipValue,colorIndex:hit.chip.userData.colorIndex,from:hit.chip.position.clone()});updateStagedChips();return;}
   },true);
   root.addEventListener('dblclick',event=>{
     if(ignoredSceneTarget(event.target))return;
@@ -524,7 +538,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       if(p>=1)cardFlights.splice(i,1);
     }
     for(const card of cardGroup.children){
-      if(!card.userData.isHeroCard)continue;
+      if(!card.userData.isHeroCard||cardFlights.some(f=>f.card===card))continue;
       const d=card.userData;d.peekProgress+=(d.peekTarget-d.peekProgress)*.16;
       const p=d.peekProgress,ease=p*p*(3-2*p);
       const peekPosition=d.basePosition.clone().add(new THREE.Vector3(d.basePosition.x*.12,.92,1.05));
