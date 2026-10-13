@@ -45,9 +45,9 @@ function ensureFunPanel(){
  if($('#funDock'))return;
  const dock=document.createElement('section');dock.id='funDock';dock.innerHTML='<button id="funToggle" class="fun-toggle" aria-expanded="false">✦ PLAY BETTER</button><div id="funPanel" class="fun-panel" hidden><div class="fun-head"><b>GAME HUB</b><button id="funClose" aria-label="Close">×</button></div><div class="fun-tabs"><button data-fun-tab="challenges" class="active">Challenges</button><button data-fun-tab="coach">Coach</button><button data-fun-tab="recap">Recap</button><button data-fun-tab="social">Emotes</button></div><div id="funBody"></div><div class="fun-foot"><label><input id="funSound" type="checkbox"> Round sounds</label><button id="funTheme">Change table accent</button></div></div>';
  document.body.appendChild(dock);
- $('#funToggle').onclick=()=>{funPanelOpen=!funPanelOpen;$('#funPanel').hidden=!funPanelOpen;$('#funToggle').setAttribute('aria-expanded',String(funPanelOpen));if(funPanelOpen)renderFunTab('challenges')};
- $('#funClose').onclick=()=>{funPanelOpen=false;$('#funPanel').hidden=true;$('#funToggle').setAttribute('aria-expanded','false')};
- $('#funPanel [data-fun-tab]').forEach(b=>b.onclick=()=>renderFunTab(b.dataset.funTab));
+ $('#funToggle').onclick=()=>{funPanelOpen=!funPanelOpen;$$('#funPanel').hidden=!funPanelOpen;$('#funToggle').setAttribute('aria-expanded',String(funPanelOpen));if(funPanelOpen)renderFunTab('challenges')};
+ $('#funClose').onclick=()=>{funPanelOpen=false;$$('#funPanel').hidden=true;$('#funToggle').setAttribute('aria-expanded','false')};
+ $$('#funPanel [data-fun-tab]').forEach(b=>b.onclick=()=>renderFunTab(b.dataset.funTab));
  $('#funSound').checked=localStorage.getItem('gh_fun_sound')==='1';
  $('#funSound').onchange=()=>localStorage.setItem('gh_fun_sound',$('#funSound').checked?'1':'0');
  $('#funTheme').onclick=()=>{const next=localStorage.getItem('gh_fun_accent')==='gold'?'blue':'gold';localStorage.setItem('gh_fun_accent',next);document.documentElement.dataset.funAccent=next;toast('Table accent changed.')};
@@ -87,7 +87,7 @@ function updateFunFeatures(s){
  funSnapshot={code:s.code,game,marker};
 }
 function renderFunTab(tab){
- ensureFunPanel();$('#funPanel [data-fun-tab]').forEach(b=>b.classList.toggle('active',b.dataset.funTab===tab));
+ ensureFunPanel();$$('#funPanel [data-fun-tab]').forEach(b=>b.classList.toggle('active',b.dataset.funTab===tab));
  const body=$('#funBody'),p=funLoad(),game=state?.game||'poker';
  if(tab==='challenges'){
   const rounds=p.roundsToday||0,wins=p.winsToday||0,ach=p.achievements||{};
