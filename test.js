@@ -55,7 +55,7 @@ test('original poker controls remain wired and physical chips are clickable',()=
   assert.match(scene,/pokerChipValue/);
   assert.match(scene,/pointerRaycaster\.intersectObjects/);
   assert.match(scene,/throwPhysicalChips/);
-  assert.match(app,/\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);
+  assert.match(app,/\$\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);
   assert.match(app,/gh:poker-physical-bet/);
   assert.match(app,/call\('pokerAction'/);
 });
@@ -71,3 +71,6 @@ test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
   assert.match(html,/id="bjHud"/);
   assert.match(css,/\.bj-hud\{position:absolute;top:18px;left:18px/);
 });
+
+test('poker controls bind without aborting app initialization',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.match(app,/\$\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);assert.match(app,/\$\('#playAgainBtn'\)\.onclick/);assert.match(app,/\$\('#quitGameBtn'\)\.onclick=returnToRoom/);});
+test('immersive table supports orbit camera, double tap, and call guidance',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/canvas\.addEventListener\('pointermove'/);assert.match(s,/cameraYaw/);assert.match(s,/canvas\.addEventListener\('dblclick'/);assert.match(s,/animateHeroAction\('TABLE TAP'\)/);assert.match(s,/CALL NEEDS/);});
