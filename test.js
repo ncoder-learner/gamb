@@ -45,21 +45,20 @@ test('immersive labels depth-test against cards and real CC0 wood maps are confi
   assert.match(s,/wood_floor|floorMat/);
 });
 
-test('simplified chip picker and poker betting are wired to authoritative actions',()=>{
+test('original poker controls remain wired and physical chips are clickable',()=>{
   const scene=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
-  assert.match(scene,/className='chip-control'/);
-  assert.match(scene,/CHIP PILE/);
-  assert.match(scene,/data-chip-preset="call"/);
-  assert.match(scene,/data-chip-preset="allin"/);
-  assert.match(scene,/id="throwStagedChips"/);
-  assert.match(scene,/roundedCardShape\(\.84,1\.13/);
-  assert.match(app,/request\.action==='throw-in'/);
-  assert.match(app,/gh:poker-bet-state/);
+  assert.match(scene,/pointer-events:auto;touch-action:manipulation/);
+  assert.match(scene,/roundedCardShape\(\.86,1\.16/);
+  assert.match(scene,/communityGap/);
+  assert.match(scene,/isHeroCard=true/);
+  assert.match(scene,/pokerChipValue/);
+  assert.match(scene,/pointerRaycaster\.intersectObjects/);
+  assert.match(scene,/id='throwPhysicalChips'/);
+  assert.match(app,/\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);
+  assert.match(app,/gh:poker-physical-bet/);
   assert.match(app,/call\('pokerAction',\{action,amount\}\)/);
-  assert.match(app,/gh:poker-action-result/);
 });
-
 test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
   const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
