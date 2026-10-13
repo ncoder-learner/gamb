@@ -80,7 +80,7 @@ app.post('/api/dev/login',(req,res)=>{
  if(attempt.until>now&&attempt.count>=6)return res.status(429).json({error:'Too many attempts. Try again in 10 minutes.'});
  const expectedUser=String(process.env.DEV_USERNAME||'dev'),expectedPass=String(process.env.DEV_PASSWORD||'');
  const username=String(req.body?.username||''),password=String(req.body?.password||'');
- const userOk=crypto.timingSafeEqual(Buffer.from(username.padEnd(128,'\0').slice(0,128)),Buffer.from(expectedUser.padEnd(128,'\0').slice(0,128)));
+ const userOk=crypto.timingSafeEqual(crypto.createHash('sha256').update(username).digest(),crypto.createHash('sha256').update(expectedUser).digest());
  const passA=crypto.createHash('sha256').update(password).digest(),passB=crypto.createHash('sha256').update(expectedPass||crypto.randomBytes(32).toString('hex')).digest();
  const passOk=crypto.timingSafeEqual(passA,passB);
  if(!expectedPass||!userOk||!passOk){attempt.count=attempt.until>now?attempt.count+1:1;attempt.until=now+600000;devLoginAttempts.set(ip,attempt);return res.status(401).json({error:'Invalid developer credentials or developer access is not configured.'})}
