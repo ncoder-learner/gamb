@@ -1,4 +1,4 @@
-const SOCKET_URL = window.POKER_SERVER_URL || 'https://gamb-eu6t.onrender.com';
+const SOCKET_URL = window.POKER_SERVER_URL || 'https://gamb-feature-preview.onrender.com';
 const API_URL = window.POKER_SERVER_URL || SOCKET_URL;
 const socket = window.io ? io(SOCKET_URL,{auth:{accountToken:localStorage.getItem('gh_account_token')||''},transports:['websocket','polling'],reconnection:true,reconnectionAttempts:Infinity}) : {connected:false,auth:{},on(){return this},emit(event,payload,cb){if(typeof cb==='function')cb({ok:false,error:'Realtime server unavailable. Refresh the page and try again.'});return this},disconnect(){return this},connect(){return this}};
 function syncSocketAuth(){socket.auth={accountToken};if(socket.connected)socket.disconnect().connect();}
