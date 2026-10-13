@@ -90,7 +90,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     chipControl.querySelectorAll('[data-chip-preset]').forEach(button=>{
       const choice=button.dataset.chipPreset;
       button.disabled=!betState.myTurn||(choice==='call'&&betState.toCall<=0)||(choice==='allin'&&betState.stack<=0);
-      button.classList.toggle('selected',Number(choice)===stagedChipAmount&&/^\d+$/.test(choice));
+      button.classList.toggle('selected',Number(choice)===stagedChipAmount&&/^[0-9]+$/.test(choice));
     });
     pickerNote.textContent=betState.myTurn?(betState.toCall>0?'To call: '+betState.toCall.toLocaleString()+'. Choose CALL, a chip amount, or ALL IN.':'Your turn. Choose an amount, then press THROW IN.'):'Waiting for your turn.';
   }
@@ -98,7 +98,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const opening=picker.hidden;
     picker.hidden=!opening;
     pileToggle.setAttribute('aria-expanded',String(opening));
-    if(opening)chipControl.querySelector('#customChipAmount').focus({preventScroll:true});
+    
   });
   function chooseChipAmount(amount){
     const n=Math.floor(Number(amount)||0);
