@@ -74,3 +74,5 @@ test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
 
 test('poker controls bind without aborting app initialization',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.match(app,/\$\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);assert.match(app,/\$\('#playAgainBtn'\)\.onclick/);assert.match(app,/\$\('#quitGameBtn'\)\.onclick=returnToRoom/);});
 test('immersive table supports orbit camera, double tap, and call guidance',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/canvas\.addEventListener\('pointermove'/);assert.match(s,/cameraYaw/);assert.match(s,/canvas\.addEventListener\('dblclick'/);assert.match(s,/animateHeroAction\('TABLE TAP'\)/);assert.match(s,/CALL NEEDS/);});
+
+test('all selector iteration uses querySelectorAll helper',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.doesNotMatch(app,/\$\('\[data-hand\]'\)\.forEach/);assert.doesNotMatch(app,/\$\('\[data-bj\]'\)\.forEach/);assert.match(app,/\$\$\('\[data-hand\]'\)\.forEach/);assert.match(app,/\$\$\('\[data-bj\]'\)\.forEach/);});
