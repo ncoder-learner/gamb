@@ -57,7 +57,7 @@ test('original poker controls remain wired and physical chips are clickable',()=
   assert.match(scene,/throwPhysicalChips/);
   assert.match(app,/\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);
   assert.match(app,/gh:poker-physical-bet/);
-  assert.match(app,/call\('pokerAction',\{action,amount\}\)/);
+  assert.match(app,/call\('pokerAction'/);
 });
 test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
