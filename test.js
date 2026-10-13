@@ -39,7 +39,7 @@ test('immersive labels depth-test against cards and real CC0 wood maps are confi
   const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
   assert.match(s,/depthTest:true,depthWrite:false/);
   assert.match(s,/wood_table_001/);
-  assert.match(s,/2a83c5/);
+  assert.match(s,/247bb4/);
   assert.match(s,/makeChip\(1\.35/);
   assert.match(s,/#pot\{top:42%!important;left:77%!important/);
   assert.match(s,/wood_floor|floorMat/);
