@@ -429,6 +429,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const potCount=potValue>0?Math.max(1,Math.min(10,Math.ceil(Math.log10(potValue+1)*2))):0;
       for(let i=0;i<potCount;i++)makeChip(1.35+(i%3)*.19,.17+Math.floor(i/3)*.058,-.72,i%5);
       for(let col=0;col<3;col++){const count=Math.max(0,Math.ceil((potCount-col)/3));if(count)addChipMark(1.35+col*.19,.17+(count-1)*.058+.03,-.72,col%5)}
+      // Rebuild the clickable denomination stacks after each state-driven chip refresh.
+      for(let d=0;d<6;d++)chipStack(-2.72+d*1.09,1.88,3+(d%3),d,true);
       previousCardKeys=nextCardKeys;
     }else{
       const dealer=getCards('#dealerCards');
