@@ -395,12 +395,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       movingChips.push({g,from:new THREE.Vector3(g.position.x,g.position.y,g.position.z),to:new THREE.Vector3(-.2+(i%3)*.18,.2,-.82+(i%2)*.12),start:performance.now()+i*65,duration:520+i*40});
     }
   }
-  let heroActionStart=0, heroTapStart=0;
+  let heroActionStart=0, heroTapStart=0, heroActionKind='CHECK';
   function animateHeroAction(action){
     const normalized=String(action).toUpperCase();
     if(normalized==='TABLE TAP'){heroTapStart=performance.now();heroArm.visible=true;return;}
     if(!['CALL','RAISE','ALL-IN','CHECK','FOLD'].includes(normalized))return;
-    heroActionStart=performance.now();heroArm.visible=true;
+    heroActionKind=normalized;heroActionStart=performance.now();heroArm.visible=true;
     if(['CALL','RAISE','ALL-IN'].includes(normalized))throwChips(.55,3.0,normalized==='ALL-IN'?5:3,normalized==='RAISE'?4:1);
   }
   const previousActions=new Map();
@@ -596,7 +596,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const p=Math.min(1,(now-heroActionStart)/620);
       const reach=p<.48?p/.48:1-(p-.48)/.52;
       heroArm.visible=p<1;
-      heroArm.position.set(.42-reach*.28,.32+Math.sin(reach*Math.PI)*.06,2.9-reach*.78);
+      if(heroActionKind==='FOLD')heroArm.position.set(.42+reach*.08,.32+Math.sin(reach*Math.PI)*.04,2.9+reach*.38);
+      else heroArm.position.set(.42-reach*.28,.32+Math.sin(reach*Math.PI)*.06,2.9-reach*.78);
       if(p>=1)heroActionStart=0;
     }
     for(const [i,startAt] of seatGestures){
