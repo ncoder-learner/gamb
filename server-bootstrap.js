@@ -5,15 +5,16 @@ const { Pool } = require('pg');
 const DATA_FILE = path.join(__dirname, 'data.json');
 const DATABASE_URL = process.env.DATABASE_URL;
 
-if (!DATABASE_URL) {
+const PREVIEW_MEMORY_MODE = process.env.PREVIEW_MEMORY_MODE === '1';
+if (!DATABASE_URL && !PREVIEW_MEMORY_MODE) {
   throw new Error('DATABASE_URL is required for Game Hunk persistence.');
 }
 
-const pool = new Pool({
+const pool = DATABASE_URL ? new Pool({
   connectionString: DATABASE_URL,
   ssl: { rejectUnauthorized: false },
   max: 3,
-});
+}) : null;
 
 function normalizeAccount(row) {
   return {
@@ -180,7 +181,12 @@ async function bootstrap() {
   require('./server.js');
 }
 
-bootstrap().catch(error => {
-  console.error('[db-bootstrap] Failed to initialize Supabase persistence:', error);
-  process.exit(1);
-});
+if (PREVIEW_MEMORY_MODE) {
+  console.warn('[db-bootstrap] Preview memory mode enabled; account persistence is disabled for this isolated preview.');
+  require('./server.js');
+} else {
+  bootstrap().catch(error => {
+    console.error('[db-bootstrap] Failed to initialize Supabase persistence:', error);
+    process.exit(1);
+  });
+}

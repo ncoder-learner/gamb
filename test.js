@@ -8,7 +8,7 @@ test('production files exist',()=>{
   for(const f of ['package.json','server.js','render.yaml','netlify.toml','README.md','public/index.html','public/style.css','public/app.js']) assert.ok(fs.existsSync(path.join(root,f)),f);
 });
 test('netlify publishes public',()=>{const s=fs.readFileSync(path.join(root,'netlify.toml'),'utf8');assert.match(s,/publish\s*=\s*["']public["']/)});
-test('production socket url is not localhost',()=>{const s=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.match(s,/https:\/\/gamb-eu6t\.onrender\.com/);assert.doesNotMatch(s,/localhost:3000/)});
+test('configured socket URL is secure and remote',()=>{const s=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.ok(s.includes('https://gamb-feature-preview.onrender.com')||s.includes('https://gamb-eu6t.onrender.com'));assert.doesNotMatch(s,/localhost:3000/) });
 test('server exposes health and authoritative poker phases',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');for(const x of ['/health','PREFLOP','FLOP','TURN','RIVER','SHOWDOWN','HAND_COMPLETE','pokerAction','addBot','blackjackAction','rouletteBet','chessMove','quickGame','/api/history','/api/daily','/api/leaderboard'])assert.match(s,new RegExp(x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))});
 
 test('virtual-token safety and no payment rails',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.doesNotMatch(s,/stripe|paypal|coinbase|withdrawal.*cash|cash.*withdrawal/i);assert.match(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),/Tokens are virtual|no cash value/i)});
@@ -39,12 +39,26 @@ test('immersive labels depth-test against cards and real CC0 wood maps are confi
   const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
   assert.match(s,/depthTest:true,depthWrite:false/);
   assert.match(s,/wood_table_001/);
-  assert.match(s,/2a83c5/);
+  assert.match(s,/247bb4/);
   assert.match(s,/makeChip\(1\.35/);
   assert.match(s,/#pot\{top:42%!important;left:77%!important/);
   assert.match(s,/wood_floor|floorMat/);
 });
 
+test('original poker controls remain wired and physical chips are clickable',()=>{
+  const scene=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');
+  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+  assert.match(scene,/pointer-events:auto;touch-action:none/);
+  assert.match(scene,/roundedCardShape\(\.86,1\.16/);
+  assert.match(scene,/communityGap/);
+  assert.match(scene,/isHeroCard=true/);
+  assert.match(scene,/pokerChipValue/);
+  assert.match(scene,/pointerRaycaster\.intersectObjects/);
+  assert.match(scene,/throwPhysicalChips/);
+  assert.match(app,/\$\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);
+  assert.match(app,/gh:poker-physical-bet/);
+  assert.match(app,/call\('pokerAction'/);
+});
 test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
   const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
   const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
@@ -56,4 +70,44 @@ test('blackjack HUD exposes total, hand state, advice and confirmed wager',()=>{
   assert.match(app,/Bet placed · \$\{amount\.toLocaleString\(\)\} virtual tokens/);
   assert.match(html,/id="bjHud"/);
   assert.match(css,/\.bj-hud\{position:absolute;top:18px;left:18px/);
+});
+
+test('poker controls bind without aborting app initialization',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.match(app,/\$\$\('\[data-action\]'\)\.forEach\(b=>b\.onclick=/);assert.match(app,/\$\('#playAgainBtn'\)\.onclick/);assert.match(app,/\$\('#quitGameBtn'\)\.onclick=returnToRoom/);});
+test('immersive table supports orbit camera, double tap, and call guidance',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/canvas\.addEventListener\('pointermove'/);assert.match(s,/cameraYaw/);assert.match(s,/canvas\.addEventListener\('dblclick'/);assert.match(s,/animateHeroAction\('TABLE TAP'\)/);assert.match(s,/CALL NEEDS/);});
+
+test('all selector iteration uses querySelectorAll helper',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.doesNotMatch(app,/(?<!\$)\$\('\[data-hand\]'\)\.forEach/);assert.doesNotMatch(app,/(?<!\$)\$\('\[data-bj\]'\)\.forEach/);assert.match(app,/\$\$\('\[data-hand\]'\)\.forEach/);assert.match(app,/\$\$\('\[data-bj\]'\)\.forEach/);});
+
+test('double-click and mobile double-tap trigger a real check/call action',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/function handleTableDoubleTap/);assert.match(s,/actionButton\.click\(\)/);assert.match(s,/now-lastTapAt<340/);assert.match(s,/DOUBLE-CLICK \/ DOUBLE-TAP FELT TO CHECK OR CALL/);});
+test('blue lounge rendering includes detailed felt, compact readable chips and head tracking',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/#155b8c/);assert.match(s,/const headPivot=new THREE\.Group\(\)/);assert.match(s,/seatHeadRefs\.set/);assert.match(s,/avatar\.worldToLocal\(camera\.position\.clone\(\)\)/);assert.match(s,/denominations=\[\{value:25,color:2,x:-1\.25\}/);assert.match(s,/chandelier/);});
+
+test('game result UI explains blackjack outcomes, roulette settlements, and poker hand comparisons',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ for(const marker of ['renderBJSummary','bj-result-comparison','rouletteOutcomeDetails','WHY THE WINNER WON','ranks[b.hand]'])assert.ok(app.includes(marker),marker);
+});
+test('developer maintenance endpoints require server-side credentials and authorization',()=>{
+ const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ for(const marker of ['/api/dev/login','/api/dev/reset-leaderboard','/api/dev/reset-rooms','DEV_PASSWORD','adminFromRequest'])assert.ok(s.includes(marker),marker);
+ assert.doesNotMatch(s,/DEV_PASSWORD\s*[:=]\s*['"]dev123['"]/);
+});
+
+test('poker bots use sampled opponent hole cards and adaptive pot-odds strategy',()=>{
+ const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ assert.match(s,/function estimateEquity\(p,room,trials=160\)/);
+ assert.match(s,/const opponentHands=opponents\.map\(\(\)=>\[draw\(\),draw\(\)\]\)/);
+ assert.match(s,/function preflopStrength\(hole\)/);
+ assert.match(s,/function boardTexture\(board\)/);
+ assert.match(s,/potOdds/);
+ assert.match(s,/cfg\.tight/);
+ assert.match(s,/cfg\.aggression/);
+});
+test('optional game hub features are present without changing authoritative game actions',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ const css=fs.readFileSync(path.join(root,'public/style.css'),'utf8');
+ for(const x of ['Warm-up','function updateFunFeatures','function renderFunTab','data-fun-tab="coach"','data-fun-tab="recap"','data-fun-tab="social"','data-emote','gh_fun_sound','gh_fun_accent'])assert.ok(app.includes(x),x);
+ assert.match(app,/call\('chat',\{text:b\.dataset\.emote\}\)/);
+ assert.match(css,/#funDock/);
+});
+test('developer login preview reports backend branch mismatch clearly',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
 });

@@ -1,4 +1,5 @@
-const SOCKET_URL = window.POKER_SERVER_URL || 'https://gamb-eu6t.onrender.com';
+const IS_FEATURE_PREVIEW = location.hostname.includes('gamb-git-feature-first-person-po-52cdba');
+const SOCKET_URL = window.POKER_SERVER_URL || (IS_FEATURE_PREVIEW ? 'https://gamb-feature-preview.onrender.com' : 'https://gamb-eu6t.onrender.com');
 const API_URL = window.POKER_SERVER_URL || SOCKET_URL;
 const socket = window.io ? io(SOCKET_URL,{auth:{accountToken:localStorage.getItem('gh_account_token')||''},transports:['websocket','polling'],reconnection:true,reconnectionAttempts:Infinity}) : {connected:false,auth:{},on(){return this},emit(event,payload,cb){if(typeof cb==='function')cb({ok:false,error:'Realtime server unavailable. Refresh the page and try again.'});return this},disconnect(){return this},connect(){return this}};
 function syncSocketAuth(){socket.auth={accountToken};if(socket.connected)socket.disconnect().connect();}
@@ -27,12 +28,87 @@ async function showShop(){try{const j=await api('/api/me');account=j.account;con
 async function buyItem(id){try{const j=await api('/api/shop/buy',{method:'POST',body:JSON.stringify({id})});account=j.account;toast('Item unlocked!');showShop()}catch(e){toast(e.message)}}
 async function equipItem(id){try{const j=await api('/api/shop/equip',{method:'POST',body:JSON.stringify({id})});account=j.account;toast('Equipped!');showShop()}catch(e){toast(e.message)}}
 function mePlayer(){return state?.players.find(p=>p.id===state.me?.id)||state?.players.find(p=>p.id===me?.id)}
+function openDevTools(){const token=sessionStorage.getItem('gh_dev_token');if(token){openModal('<span class="eyebrow">DEVELOPER CONSOLE</span><h2>Maintenance tools</h2><p class="modal-sub">Destructive actions affect every player. Leaderboard reset preserves accounts and token balances; room reset ends every live table.</p><button class="btn danger full" id="devResetRooms">RESET ALL LIVE ROOMS</button><button class="btn danger full" id="devResetLeaderboard">RESET LEADERBOARD + HISTORY</button><button class="btn full" id="devLogout">SIGN OUT OF DEV TOOLS</button>');return}openModal('<span class="eyebrow">RESTRICTED ACCESS</span><h2>Developer sign in</h2><p class="modal-sub">Developer credentials are checked by the server. Configure DEV_USERNAME and DEV_PASSWORD in Render environment settings first.</p><label class="modal-label">USERNAME</label><input id="devUsername" class="modal-input" value="dev" autocomplete="username"><label class="modal-label">PASSWORD</label><input id="devPassword" class="modal-input" type="password" autocomplete="current-password"><button class="btn primary full" id="devLoginBtn">SIGN IN</button>')}
+async function devAction(path,label){if(!confirm(label+'? This cannot be undone.'))return;try{const r=await fetch(API_URL+path,{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+sessionStorage.getItem('gh_dev_token')},body:'{}'});const j=await r.json();if(!r.ok)throw Error(j.error||'Request failed');toast(j.message);if(path.endsWith('reset-rooms')){state=null;me=null;roomCode='';localStorage.removeItem('gh_session');showScreen('home')}openDevTools()}catch(e){toast(e.message)}}
 function renderConnection(ok){$('#connection').classList.toggle('online',ok);$('#connection').innerHTML=`<i></i> ${ok?'Connected':'Disconnected'}`}
 function saveSession(){if(roomCode&&me?.reconnectToken)localStorage.setItem('gh_session',JSON.stringify({code:roomCode,reconnectToken:me.reconnectToken}))}
 socket.on('connect',async()=>{renderConnection(true);await loadAccount();const s=JSON.parse(localStorage.getItem('gh_session')||'null');if(s){const r=await call('resumeRoom',s);if(r.ok){roomCode=s.code;toast('Reconnected')}}});
+socket.on('devRoomReset',x=>{state=null;me=null;roomCode='';localStorage.removeItem('gh_session');showScreen('home');toast(x?.message||'Live rooms were reset by a developer.')});
 socket.on('disconnect',()=>renderConnection(false));socket.on('connect_error',()=>renderConnection(false));
 socket.on('joinRequest',x=>{pendingJoinRequest=x;openModal('<span class="eyebrow">TABLE REQUEST</span><h2>'+esc(x.name)+' wants to join</h2><p class="modal-sub">'+esc(x.name)+' is asking to sit at table '+esc(x.code)+'.</p><div class="home-actions"><button class="btn primary" id="acceptJoin">LET THEM IN</button><button class="btn danger" id="declineJoin">DECLINE</button></div>');$('#acceptJoin').onclick=()=>respondJoin(true);$('#declineJoin').onclick=()=>respondJoin(false)});socket.on('joinRequestResult',async r=>{pendingJoinRequest=null;if(!r.ok){toast(r.error||'Join request declined.');return}roomCode=r.code||roomCode;me={...(me||{}),reconnectToken:r.reconnectToken||me?.reconnectToken};saveSession();const rebound=await call('resumeRoom',{code:roomCode,reconnectToken:me.reconnectToken});if(!rebound.ok){toast(rebound.error||'Accepted, but reconnect failed. Refresh and try again.');return}showScreen('lobby');toast('Accepted. You joined the existing table lobby.')});
-socket.on('state',s=>{state=s;roomCode=s.code||roomCode;me={...(me||{}),...(s.me||{})};if(s.me?.reconnectToken)saveSession();if(s.code){$('#roomCode').textContent=s.code;$('#gameRoom').textContent=s.code}renderAll()});
+socket.on('state',s=>{state=s;roomCode=s.code||roomCode;me={...(me||{}),...(s.me||{})};if(s.me?.reconnectToken)saveSession();if(s.code){$('#roomCode').textContent=s.code;$('#gameRoom').textContent=s.code}renderAll();updateFunFeatures(s)});
+
+const FUN_KEY='gh_fun_progress_v1';
+let funSnapshot=null,funPanelOpen=false,funAudioContext=null;
+function funLoad(){try{return JSON.parse(localStorage.getItem(FUN_KEY)||'{}')}catch{return {}}}
+function funSave(v){localStorage.setItem(FUN_KEY,JSON.stringify(v))}
+function ensureFunPanel(){
+ if($('#funDock'))return;
+ const dock=document.createElement('section');dock.id='funDock';dock.innerHTML='<button id="funToggle" class="fun-toggle" aria-expanded="false">✦ PLAY BETTER</button><div id="funPanel" class="fun-panel" hidden><div class="fun-head"><b>GAME HUB</b><button id="funClose" aria-label="Close">×</button></div><div class="fun-tabs"><button data-fun-tab="challenges" class="active">Challenges</button><button data-fun-tab="coach">Coach</button><button data-fun-tab="recap">Recap</button><button data-fun-tab="social">Emotes</button></div><div id="funBody"></div><div class="fun-foot"><label><input id="funSound" type="checkbox"> Round sounds</label><button id="funTheme">Change table accent</button></div></div>';
+ document.body.appendChild(dock);
+ $('#funToggle').onclick=()=>{funPanelOpen=!funPanelOpen;$('#funPanel').hidden=!funPanelOpen;$('#funToggle').setAttribute('aria-expanded',String(funPanelOpen));if(funPanelOpen)renderFunTab('challenges')};
+ $('#funClose').onclick=()=>{funPanelOpen=false;$('#funPanel').hidden=true;$('#funToggle').setAttribute('aria-expanded','false')};
+ $$('#funPanel [data-fun-tab]').forEach(b=>b.onclick=()=>renderFunTab(b.dataset.funTab));
+ $('#funSound').checked=localStorage.getItem('gh_fun_sound')==='1';
+ $('#funSound').onchange=()=>localStorage.setItem('gh_fun_sound',$('#funSound').checked?'1':'0');
+ $('#funTheme').onclick=()=>{const next=localStorage.getItem('gh_fun_accent')==='gold'?'blue':'gold';localStorage.setItem('gh_fun_accent',next);document.documentElement.dataset.funAccent=next;toast('Table accent changed.')};
+ document.documentElement.dataset.funAccent=localStorage.getItem('gh_fun_accent')||'blue';
+}
+function funPlaySound(){
+ if(localStorage.getItem('gh_fun_sound')!=='1')return;
+ try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;funAudioContext=funAudioContext||new C();const osc=funAudioContext.createOscillator(),gain=funAudioContext.createGain();osc.type='sine';osc.frequency.value=660;gain.gain.value=.045;osc.connect(gain);gain.connect(funAudioContext.destination);osc.start();osc.stop(funAudioContext.currentTime+.12)}catch{}
+}
+function funToday(){return new Date().toISOString().slice(0,10)}
+function updateFunFeatures(s){
+ ensureFunPanel();
+ const p=funLoad(),today=funToday();
+ if(p.day!==today){p.day=today;p.roundsToday=0;p.winsToday=0;p.gamesToday=[]}
+ const game=s.game||'unknown',mine=s.me?.id,phase=game==='poker'?s.poker?.phase:game==='blackjack'?s.blackjack?.phase:game==='roulette'?s.roulette?.phase:s.chess?.winners?.length?'RESULT':'';
+ const marker=game==='poker'?(s.poker?.handNo||0)+':'+phase:game==='blackjack'?phase+':'+Object.values(s.blackjack?.hands||{}).map(h=>h.result||'').join(','):game==='roulette'?phase+':'+JSON.stringify(s.roulette?.result||null):phase+':'+JSON.stringify(s.chess?.winners||[]);
+ const prev=funSnapshot;
+ if(prev&&prev.code===s.code&&prev.game===game&&prev.marker!==marker){
+   const resultReady=(game==='poker'&&s.poker?.phase==='HAND_COMPLETE')||(game==='blackjack'&&s.blackjack?.phase==='RESULT')||(game==='roulette'&&s.roulette?.phase==='RESULT')||(game==='chess'&&Array.isArray(s.chess?.winners)&&s.chess.winners.length>0);
+   if(resultReady&&prev.marker!==marker){
+     p.roundsToday=(p.roundsToday||0)+1;if(!p.gamesToday.includes(game))p.gamesToday.push(game);
+     let won=false,summary='';
+     if(game==='poker'){won=(s.poker?.winners||[]).some(w=>w.id===mine);const w=(s.poker?.winners||[]).map(w=>s.players.find(x=>x.id===w.id)?.name+' · '+(w.hand||'won pot')).filter(Boolean);summary=won?'You won the poker hand.':(w.join(', ')||'Poker hand completed.')}
+     else if(game==='blackjack'){const h=s.blackjack?.hands?.[mine];won=h?.result==='win'||h?.result==='blackjack';summary='Your total: '+(h?.total??'—')+'. Dealer total: '+(s.blackjack?.dealer||[]).filter(c=>c!=='??').join(' ') + (h?.result?' · '+h.result:'')}
+     else if(game==='roulette'){const wins=(s.roulette?.result?.winners||[]).some(w=>w.playerId===mine);won=wins;summary='Spin result: '+JSON.stringify(s.roulette?.result??'completed')}
+     else {won=(s.chess?.winners||[]).includes(mine);summary=won?'You won the chess game.':'Chess game completed.'}
+     if(won)p.winsToday=(p.winsToday||0)+1;
+     p.lastRecap={game,won,summary,at:Date.now()};
+     p.achievements=p.achievements||{};
+     if(p.roundsToday>=3)p.achievements.threeRounds=true;
+     if(won)p.achievements.firstWin=true;
+     if(p.gamesToday.length>=2)p.achievements.variety=true;
+     funSave(p);funPlaySound();
+     if(funPanelOpen)renderFunTab('recap');
+   }
+ }
+ funSnapshot={code:s.code,game,marker};
+}
+function renderFunTab(tab){
+ ensureFunPanel();$$('#funPanel [data-fun-tab]').forEach(b=>b.classList.toggle('active',b.dataset.funTab===tab));
+ const body=$('#funBody'),p=funLoad(),game=state?.game||'poker';
+ if(tab==='challenges'){
+  const rounds=p.roundsToday||0,wins=p.winsToday||0,ach=p.achievements||{};
+  body.innerHTML='<p class="fun-intro">Complete small goals while you play. Progress is saved in this browser.</p><div class="fun-challenge"><b>Warm-up</b><span>'+rounds+'/3 rounds today</span><i><em style="width:'+Math.min(100,rounds/3*100)+'%"></em></i></div><div class="fun-challenge"><b>First win</b><span>'+(wins?'Complete':'Win any round')+'</span><i><em style="width:'+(wins?100:0)+'%"></em></i></div><div class="fun-challenge"><b>Game explorer</b><span>'+(p.gamesToday||[]).length+'/2 game types</span><i><em style="width:'+Math.min(100,(p.gamesToday||[]).length/2*100)+'%"></em></i></div><h4>Achievements</h4><div class="fun-achievements"><span class="'+(ach.threeRounds?'earned':'')+'">3-round streak</span><span class="'+(ach.firstWin?'earned':'')+'">First win</span><span class="'+(ach.variety?'earned':'')+'">Game explorer</span></div>';
+ }else if(tab==='coach'){
+  const meP=state?.players?.find(x=>x.id===state?.me?.id),call=Math.max(0,Number(state?.poker?.highestBet||0)-Number(meP?.bet||0)),pot=Number(state?.poker?.pot||0),hand=state?.me?.currentHand||'Waiting for cards';
+  let advice='Wait for a hand to begin to get a contextual tip.';
+  if(game==='poker'&&state?.status==='IN_GAME'){if(call===0)advice=/Pair|Two Pair|Three|Straight|Flush|Full House|Four|Royal/i.test(hand)?'You have made a hand. Consider value betting when weaker hands can call.':'You can check for free; avoid building a large pot with only high card.';else advice=call/(pot+call)>.33?'The call is expensive relative to the current pot. Continue mainly with strong hands or meaningful draw potential.':'The pot price is relatively favorable; compare your hand strength and likely outs before calling.'}
+  if(game==='blackjack'&&state?.blackjack?.hands?.[state?.me?.id]){const h=state.blackjack.hands[state.me.id];advice='Your total is '+h.total+'. Basic rule: stand on hard 17+, hit hard 11 or less; soft totals depend on the dealer up-card.'}
+  if(game==='roulette')advice='Roulette is random; no bet type predicts the next spin. Choose stakes for entertainment, not as a way to beat the odds.';
+  body.innerHTML='<p class="fun-intro">Quick strategy coach · informational, not a guarantee.</p><div class="fun-coach"><small>TABLE</small><b>'+esc(game.toUpperCase())+'</b><small>YOUR CURRENT HAND</small><b>'+esc(hand)+'</b><p>'+esc(advice)+'</p></div>';
+ }else if(tab==='recap'){
+  const r=p.lastRecap;
+  body.innerHTML=r?'<div class="fun-recap '+(r.won?'won':'lost')+'"><small>'+esc(r.game.toUpperCase())+' · '+new Date(r.at).toLocaleTimeString([], {hour:"2-digit",minute:"2-digit"})+'</small><h3>'+(r.won?'ROUND WON':'ROUND COMPLETE')+'</h3><p>'+esc(r.summary)+'</p></div><p class="fun-intro">For complete account history, open History from the main lobby.</p>':'<p class="fun-intro">Your last round recap will appear here after a game finishes.</p>';
+ }else{
+  body.innerHTML='<p class="fun-intro">Send a quick reaction to everyone at this table.</p><div class="fun-emotes">'+['👏','😎','🔥','🤔','💀','GG'].map(e=>'<button data-emote="'+e+'">'+e+'</button>').join('')+'</div><p class="fun-intro">Reactions use table chat and do not affect gameplay.</p>';
+  $('[data-emote]').forEach(b=>b.onclick=()=>call('chat',{text:b.dataset.emote}).then(r=>{if(!r.ok)toast(r.error);else toast('Reaction sent.')}));
+ }
+}
+
 function renderAll(){if(!state){renderAccount();return;}$('#playerCount').textContent=state.players.length;renderPlayers();renderChat();if(state.status==='IN_GAME'){showScreen('game');renderGame()}else{showScreen('lobby');renderLobby()}}
 function renderLobby(){renderAccount();const mine=mePlayer();$$('.game-tab').forEach(b=>b.classList.toggle('active',b.dataset.game===state.game));const canHost=mine?.host;$('#startBtn').disabled=!canHost;$('#addBotBtn').disabled=!canHost;const startLabel=state.game==='poker'?'START POKER':state.game==='blackjack'?'START BLACKJACK':state.game==='roulette'?'OPEN ROULETTE':'START CHESS';$('#startBtn').textContent=startLabel}
 function renderPlayers(){
@@ -41,7 +117,7 @@ function renderPlayers(){
 }
 function renderChat(){const html=(state.chat||[]).map(m=>`<div class="chat-line ${m.system?'system':''}">${m.system?'':`<b>${esc(m.name)}:</b>`}${esc(m.text)}</div>`).join('');$('#chatLog').innerHTML=html;$('#gameChat').innerHTML=html;['#chatLog','#gameChat'].forEach(s=>{const x=$(s);x.scrollTop=x.scrollHeight})}
 function card(c){if(c==='??')return '<div class="card back">?</div>';const face=String(c).replace(/^T(?=[♠♥♦♣])/,'10');return `<div class="card ${/[♥♦]/.test(face)?'red':''}">${esc(face)}</div>`}
-function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');$('#pokerBoard').classList.toggle('hidden',g!=='poker');$('#blackjackBoard').classList.toggle('hidden',g!=='blackjack');$('#rouletteBoard').classList.toggle('hidden',g!=='roulette');$('#chessBoard').classList.toggle('hidden',g!=='chess');$('#pokerActions').classList.toggle('hidden',g!=='poker');$('#bjActions').classList.toggle('hidden',g!=='blackjack');if(g==='poker')renderPoker();if(g==='blackjack')renderBJ();if(g==='roulette')renderRoulette();if(g==='chess')renderChess()}
+function renderGame(){const g=state.game;$('#postGame').classList.add('hidden');$('#pokerBoard').classList.toggle('hidden',g!=='poker');$('#blackjackBoard').classList.toggle('hidden',g!=='blackjack');$('#rouletteBoard').classList.toggle('hidden',g!=='roulette');$('#chessBoard').classList.toggle('hidden',g!=='chess');$('#pokerActions').classList.toggle('hidden',g!=='poker');$('#bjActions').classList.toggle('hidden',g!=='blackjack');if(g==='poker')renderPoker();if(g==='blackjack'){renderBJ();renderBJSummary()}if(g==='roulette')renderRoulette();if(g==='chess')renderChess()}
 function seatPos(i,n,focus=0){const a=(90+(360/n)*(i-focus))*Math.PI/180;return {left:50+42*Math.cos(a),top:50+38*Math.sin(a)}}
 function renderPoker(){
   const p=state.poker||{}, players=state.players||[], mine=mePlayer(), myTurn=state.turnPlayerId===mine?.id;
@@ -89,7 +165,7 @@ function renderPoker(){
  if(showdownEl){
    showdownEl.innerHTML=phase==='HAND_COMPLETE'&&p.showdown?.length?
      '<div class="showdown-title">SHOWDOWN · CARDS REVEALED</div>'+
-     p.showdown.map(x=>'<div class="showdown-player"><b>'+esc(x.name)+'</b><div class="showdown-cards">'+x.cards.map(card).join('')+'</div><span>'+esc(x.folded?'FOLDED':'SHOWED')+'</span></div>').join('')
+     (function(){const ranks={'High Card':0,'Pair':1,'Two Pair':2,'Three of a Kind':3,'Straight':4,'Flush':5,'Full House':6,'Four of a Kind':7,'Straight Flush':8,'Royal Flush':9};const winners=p.showdown.filter(x=>(p.winners||[]).some(w=>w.id===x.id));const other=p.showdown.filter(x=>!x.folded&&!winners.some(w=>w.id===x.id));const why=winners.length&&other.length?winners.map(w=>{const beaten=other.slice().sort((a,b)=>(ranks[b.hand]||0)-(ranks[a.hand]||0))[0];if(!beaten)return '';const wr=ranks[w.hand]??0,br=ranks[beaten.hand]??0;return wr>br?w.hand+' beats '+beaten.hand+' because '+w.hand.toLowerCase()+' ranks higher in poker.':wr===br?'Both made '+w.hand+'. The winner is decided by the highest kickers (remaining cards).':'The winner took a side pot; compare each pot separately.'}).filter(Boolean).join(' '):winners.length?'The pot was uncontested: every other player folded.':'';return (why?'<div class="showdown-explanation"><b>WHY THE WINNER WON</b><p>'+esc(why)+'</p></div>':'')+p.showdown.map(x=>'<div class="showdown-player"><b>'+esc(x.name)+'</b><div class="showdown-cards">'+x.cards.map(card).join('')+'</div><span>'+esc(x.folded?'FOLDED':x.hand||'SHOWED')+'</span></div>').join('')})()
      :'';
    showdownEl.classList.toggle('visible',phase==='HAND_COMPLETE');
  }
@@ -105,11 +181,15 @@ function renderPoker(){
  if($('#timer'))$('#timer').textContent=state.turnEndsAt?Math.max(0,Math.ceil((state.turnEndsAt-Date.now())/1000))+'s':'—';
  const strength=$('#myHandStrength');if(strength){const current=state.me?.currentHand;strength.textContent=current||(phase==='PREFLOP'?'PRE-FLOP · TWO PRIVATE CARDS':'HAND IN PROGRESS');strength.classList.toggle('live',!!current);strength.classList.toggle('turn',myTurn&&phase!=='HAND_COMPLETE');}
  const toCall=Math.max(0,(p.highestBet||0)-(mine?.bet||0));
- if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
+ document.dispatchEvent(new CustomEvent('gh:poker-bet-state',{detail:{
+   myTurn,stack:Math.max(0,Number(mine?.chips)||0),toCall,
+   minContribution:Math.max(1,Number(p.highestBet||0)+Number(p.minRaise||50)-Number(mine?.bet||0))
+ }}));
+ if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}const raiseBtn=$('[data-action="raise"]');if(raiseBtn)raiseBtn.textContent=toCall?'RAISE TO':'BET / RAISE TO';
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
  if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE'}
  const guide=$('#handGuide');
- if(guide){guide.classList.remove('hidden');const current=state.me?.currentHand;$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
+ if(guide){guide.classList.remove('hidden');const current=state.me?.currentHand;$$('[data-hand]').forEach(x=>x.classList.toggle('current',!!current&&x.dataset.hand===current))}
  const fa=$('#feltAction');
  if(fa){const active=players.find(x=>x.id===state.turnPlayerId);fa.textContent=active?(active.id===mine?.id?'YOUR TURN':active.name+' IS PLAYING'):(phase==='HAND_COMPLETE'?'SHOWDOWN':'')}
  if(window.ghPokerFX?.lastHand!==p.handNo){window.ghPokerFX={lastHand:p.handNo};}
@@ -133,7 +213,21 @@ function showPokerActionFX(player,action){
    const chips=document.createElement('div');chips.className='flying-chips';chips.style.left=pos.left+'%';chips.style.top=pos.top+'%';stage.appendChild(chips);setTimeout(()=>chips.remove(),850);
  }
 }
-function renderBJ(){const b=state.blackjack||{},mine=mePlayer(),h=mine?b.hands?.[mine.id]:null;$('#dealerCards').innerHTML=(b.dealer||[]).map(card).join('');$('#bjHands').innerHTML=state.players.map(p=>{const hand=b.hands?.[p.id];if(!hand||!hand.bet)return `<div class="bj-hand ${p.id===mine?.id?'mine ':''}${state.turnPlayerId===p.id?'bj-active':''}"><b>${esc(p.name)}</b><div class="muted">No bet</div></div>`;return `<div class="bj-hand ${p.id===mine?.id?'mine ':''}${state.turnPlayerId===p.id?'bj-active':''}"><b>${esc(p.name)} ${p.bot?'🤖':''}</b><div class="cards">${hand.cards.map(card).join('')}</div><div>${hand.total} · bet ${hand.bet}</div><div class="eyebrow">${esc(hand.result||(!hand.done?'PLAYING':''))}</div></div>`}).join('');const hud=$('#bjHud');if(hud){const total=h?.cards?.length?h.total:null,rank=String(b.dealer?.[0]||'').replace(/[♠♥♦♣]/g,''),dealerValue=rank==='A'?11:(Number(rank)||0);let advice='PLACE A BET TO START',detail='Your hand total will appear here.';if(h?.bet){if(b.phase==='BETTING'){advice='BET PLACED';detail=`${h.bet.toLocaleString()} virtual tokens committed · waiting for the deal.`}else if(h.result==='BUST'||(total??0)>21){advice='BUST';detail=`${total} points · over 21. This hand is finished.`}else if(h.result==='BLACKJACK'){advice='BLACKJACK';detail='Natural 21 · your hand has blackjack.'}else if(b.phase==='RESULT'){advice=h.result||'ROUND COMPLETE';detail=`Final total: ${total??'—'} · bet ${h.bet.toLocaleString()} tokens.`}else if(h.done){advice='HAND COMPLETE';detail='Your turn is finished · waiting for the dealer and remaining players.'}else if(total!==null){if(total===21){advice='21 · STAND';detail='You have 21. Do not draw another card.'}else if(total>=17){advice='SUGGESTION · STAND';detail=`${total} points · usually stand on 17 or higher.`}else if(total>=13&&dealerValue>=2&&dealerValue<=6){advice='SUGGESTION · STAND';detail=`${total} against dealer ${rank} · basic strategy usually stands.`}else if(total===12&&dealerValue>=4&&dealerValue<=6){advice='SUGGESTION · STAND';detail=`12 against dealer ${rank} · basic strategy usually stands.`}else if(total===11&&h.cards?.length===2&&mine?.chips>=h.bet){advice='SUGGESTION · DOUBLE';detail='11 on the first two cards · consider doubling if allowed.'}else{advice='SUGGESTION · HIT';detail=`${total} points${rank?` against dealer ${rank}`:''} · basic strategy usually hits.`}}}hud.innerHTML=`<div class="bj-hud-kicker">YOUR BLACKJACK HAND</div><div class="bj-hud-total">${total===null?'—':total}<span>${total===null?'TOTAL':'POINTS'}</span></div><div class="bj-hud-status ${advice.includes('BUST')||advice==='LOSE'?'is-loss':advice.includes('BLACKJACK')||advice==='WIN'?'is-win':''}">${esc(advice)}</div><div class="bj-hud-detail">${esc(detail)}</div>${h?.bet?`<div class="bj-hud-bet"><span>WAGER CONFIRMED</span><b>${h.bet.toLocaleString()} TOKENS</b></div>`:`<div class="bj-hud-bet is-empty">NO BET YET</div>`}`;}const myTurn=state.turnPlayerId===mine?.id;$('[data-bj]').forEach(btn=>btn.disabled=!myTurn);$('#bjBetBtn').disabled=b.phase!=='BETTING'||!mine}
+function renderBJ(){const b=state.blackjack||{},mine=mePlayer(),h=mine?b.hands?.[mine.id]:null;$('#dealerCards').innerHTML=(b.dealer||[]).map(card).join('');$('#bjHands').innerHTML=state.players.map(p=>{const hand=b.hands?.[p.id];if(!hand||!hand.bet)return `<div class="bj-hand ${p.id===mine?.id?'mine ':''}${state.turnPlayerId===p.id?'bj-active':''}"><b>${esc(p.name)}</b><div class="muted">No bet</div></div>`;return `<div class="bj-hand ${p.id===mine?.id?'mine ':''}${state.turnPlayerId===p.id?'bj-active':''}"><b>${esc(p.name)} ${p.bot?'🤖':''}</b><div class="cards">${hand.cards.map(card).join('')}</div><div>${hand.total} · bet ${hand.bet}</div><div class="eyebrow">${esc(hand.result||(!hand.done?'PLAYING':''))}</div></div>`}).join('');const hud=$('#bjHud');if(hud){const total=h?.cards?.length?h.total:null,rank=String(b.dealer?.[0]||'').replace(/[♠♥♦♣]/g,''),dealerValue=rank==='A'?11:(Number(rank)||0);let advice='PLACE A BET TO START',detail='Your hand total will appear here.';if(h?.bet){if(b.phase==='BETTING'){advice='BET PLACED';detail=`${h.bet.toLocaleString()} virtual tokens committed · waiting for the deal.`}else if(h.result==='BUST'||(total??0)>21){advice='BUST';detail=`${total} points · over 21. This hand is finished.`}else if(h.result==='BLACKJACK'){advice='BLACKJACK';detail='Natural 21 · your hand has blackjack.'}else if(b.phase==='RESULT'){advice=h.result||'ROUND COMPLETE';detail=`Final total: ${total??'—'} · bet ${h.bet.toLocaleString()} tokens.`}else if(h.done){advice='HAND COMPLETE';detail='Your turn is finished · waiting for the dealer and remaining players.'}else if(total!==null){if(total===21){advice='21 · STAND';detail='You have 21. Do not draw another card.'}else if(total>=17){advice='SUGGESTION · STAND';detail=`${total} points · usually stand on 17 or higher.`}else if(total>=13&&dealerValue>=2&&dealerValue<=6){advice='SUGGESTION · STAND';detail=`${total} against dealer ${rank} · basic strategy usually stands.`}else if(total===12&&dealerValue>=4&&dealerValue<=6){advice='SUGGESTION · STAND';detail=`12 against dealer ${rank} · basic strategy usually stands.`}else if(total===11&&h.cards?.length===2&&mine?.chips>=h.bet){advice='SUGGESTION · DOUBLE';detail='11 on the first two cards · consider doubling if allowed.'}else{advice='SUGGESTION · HIT';detail=`${total} points${rank?` against dealer ${rank}`:''} · basic strategy usually hits.`}}}hud.innerHTML=`<div class="bj-hud-kicker">YOUR BLACKJACK HAND</div><div class="bj-hud-total">${total===null?'—':total}<span>${total===null?'TOTAL':'POINTS'}</span></div><div class="bj-hud-status ${advice.includes('BUST')||advice==='LOSE'?'is-loss':advice.includes('BLACKJACK')||advice==='WIN'?'is-win':''}">${esc(advice)}</div><div class="bj-hud-detail">${esc(detail)}</div>${h?.bet?`<div class="bj-hud-bet"><span>WAGER CONFIRMED</span><b>${h.bet.toLocaleString()} TOKENS</b></div>`:`<div class="bj-hud-bet is-empty">NO BET YET</div>`}`;}const myTurn=state.turnPlayerId===mine?.id;$$('[data-bj]').forEach(btn=>btn.disabled=!myTurn);$('#bjBetBtn').disabled=b.phase!=='BETTING'||!mine}
+function renderBJSummary(){
+ const b=state.blackjack||{},mine=mePlayer(),hand=mine?b.hands?.[mine.id]:null,host=$('#bjHud');
+ if(!host)return;
+ let panel=$('#bjRoundSummary');
+ if(!panel){panel=document.createElement('section');panel.id='bjRoundSummary';panel.className='bj-round-summary';host.insertAdjacentElement('afterend',panel)}
+ if(b.phase!=='RESULT'||!hand?.bet){panel.innerHTML='';panel.classList.remove('visible');return}
+ const dealerCards=b.dealer||[];
+ let dealerTotal=0,dealerAces=0;dealerCards.forEach(c=>{const r=String(c).replace(/[♠♥♦♣]/g,'');if(r==='A'){dealerAces++;dealerTotal+=11}else if(['K','Q','J','T','10'].includes(r))dealerTotal+=10;else dealerTotal+=Number(r)||0});while(dealerTotal>21&&dealerAces>0){dealerTotal-=10;dealerAces--;}
+ const result=hand.result||'ROUND COMPLETE',won=result==='WIN'||result==='BLACKJACK',pushed=result==='PUSH';
+ const title=won?'YOU WIN':pushed?'PUSH · BET RETURNED':result==='BUST'?'YOU BUSTED':'DEALER WINS';
+ const detail=result==='BLACKJACK'?'Natural blackjack pays 3:2.':result==='BUST'?'Your '+hand.total+' points exceeded 21.':pushed?'Both hands finished at '+hand.total+'. Your wager was returned.':won?'Your '+hand.total+' beats the dealer’s '+dealerTotal+'.':'Dealer '+dealerTotal+' beats your '+hand.total+'.';
+ panel.innerHTML='<div class="bj-result-heading '+(won?'is-win':pushed?'is-push':'is-loss')+'"><strong>'+title+'</strong><span>'+esc(detail)+'</span></div><div class="bj-result-comparison"><div><label>DEALER · '+dealerTotal+'</label><div class="cards">'+dealerCards.map(card).join('')+'</div></div><div class="bj-result-vs">VS</div><div><label>YOU · '+Number(hand.total||0)+'</label><div class="cards">'+(hand.cards||[]).map(card).join('')+'</div></div></div><div class="bj-result-footer">WAGER '+Number(hand.bet||0).toLocaleString()+' · '+esc(result)+'</div>';
+ panel.classList.add('visible');
+}
 function renderRoulette(){
   const r=state.roulette||{},bets=r.bets||[],players=state.players||[];
   const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
@@ -145,7 +239,7 @@ function renderRoulette(){
     wheel.style.background='conic-gradient(from '+(-angle/2)+'deg,'+order.map((n,i)=>{const color=(n==='0'||n==='00')?'#168050':reds.has(Number(n))?'#a92d2b':'#171a17';return color+' '+(i*angle)+'deg '+((i+1)*angle)+'deg'}).join(',')+')';
   }
   if($('#roulettePhase'))$('#roulettePhase').textContent=r.phase==='SPINNING'?'WHEEL IN MOTION':r.phase==='RESULT'?'ROUND RESULT':'BETTING OPEN';
-  $('#rouletteResult').textContent=r.phase==='SPINNING'?'The wheel is spinning…':r.result?'Spin complete':'Choose your bets, then spin';
+  $('#rouletteResult').textContent=r.phase==='SPINNING'?'The wheel is spinning…':r.result!=null?'Spin complete · compare your bets below':'Choose your bets, then spin';
   const result=$('#rouletteNumberDisplay');
   if(result){result.textContent=r.result??'—';result.classList.remove('red','black','green');if(r.result!=null)result.classList.add(r.result==='0'||r.result==='00'?'green':reds.has(Number(r.result))?'red':'black')}
   if(wheel)wheel.classList.toggle('spinning',r.phase==='SPINNING');
@@ -156,18 +250,52 @@ function renderRoulette(){
   const betsHost=$('#rouletteBets');
   if(betsHost)betsHost.innerHTML=bets.length?bets.map(b=>{const p=players.find(x=>x.id===b.playerId);const label=b.type==='number'?'NUMBER '+b.value:b.type.toUpperCase();return '<div class="roulette-bet-row"><span class="roulette-bet-dot '+(b.type==='red'?'red':b.type==='black'?'black':b.type==='number'?'number':'outside')+'"></span><div><b>'+esc(p?.name||'Player')+'</b><span>'+esc(label)+'</span></div><strong>'+Number(b.amount||0).toLocaleString()+' chips</strong></div>'}).join(''):'<p class="roulette-empty">No bets yet. Choose an outside bet or tap a number.</p>';
   if($('#rouletteBetTotal'))$('#rouletteBetTotal').textContent=bets.reduce((sum,b)=>sum+Number(b.amount||0),0).toLocaleString()+' chips committed · '+bets.length+' bet'+(bets.length===1?'':'s');
+  let outcome=$('#rouletteOutcomeDetails');
+  if(!outcome){outcome=document.createElement('div');outcome.id='rouletteOutcomeDetails';outcome.className='roulette-outcome-details';const panel=$('.roulette-table-panel');if(panel)panel.appendChild(outcome)}
+  if(r.phase==='RESULT'&&r.result!=null){
+    const n=r.result==='00'?37:Number(r.result),red=reds.has(n),mine=mePlayer(),mineBets=bets.filter(b=>b.playerId===mine?.id);
+    const rows=mineBets.map(b=>{let won=false,mult=1;if(b.type==='number'){won=String(b.value)===String(r.result);mult=35}else if(b.type==='red')won=r.result!=='0'&&r.result!=='00'&&red;else if(b.type==='black')won=r.result!=='0'&&r.result!=='00'&&!red;else if(b.type==='odd')won=n>0&&n<37&&n%2===1;else if(b.type==='even')won=n>0&&n<37&&n%2===0;else if(b.type==='low')won=n>=1&&n<=18;else if(b.type==='high')won=n>=19&&n<=36;return {bet:b,won,payout:won?Number(b.amount||0)*(mult+1):0,label:b.type==='number'?'Number '+b.value:b.type.toUpperCase()}});
+    const won=rows.filter(x=>x.won),lost=rows.filter(x=>!x.won),paid=won.reduce((sum,x)=>sum+x.payout,0),staked=rows.reduce((sum,x)=>sum+Number(x.bet.amount||0),0);
+    outcome.innerHTML='<div class="roulette-outcome-title '+(won.length?'is-win':'is-loss')+'"><strong>'+(won.length?'YOU WON':'NO WINNING BETS')+'</strong><span>Ball landed on '+esc(r.result)+' · '+(r.result==='0'||r.result==='00'?'GREEN':red?'RED':'BLACK')+'</span></div><div class="roulette-outcome-math">'+won.map(x=>'<div class="roulette-settlement win"><b>'+esc(x.label)+'</b><span>'+Number(x.bet.amount).toLocaleString()+' stake → '+Number(x.payout).toLocaleString()+' returned</span></div>').join('')+lost.map(x=>'<div class="roulette-settlement loss"><b>'+esc(x.label)+'</b><span>'+Number(x.bet.amount).toLocaleString()+' stake → 0 returned</span></div>').join('')+'</div><p class="roulette-net '+(paid>staked?'is-win':paid===staked?'is-push':'is-loss')+'">Staked '+staked.toLocaleString()+' · payout '+paid.toLocaleString()+' · net '+(paid-staked>0?'+':'')+(paid-staked).toLocaleString()+'</p>';
+    outcome.classList.add('visible');
+  }else{outcome.innerHTML='';outcome.classList.remove('visible')}
   const mine=mePlayer();$('#spinBtn').disabled=!mine?.host||r.phase!=='BETTING'||bets.length===0;
 }
 const pieces={p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'};
 function renderChess(){const c=state.chess||{};$('#chessStatus').textContent=c.winners?.length?'GAME OVER':`Turn: ${c.turn==='w'?'White':'Black'}`;if(c.wagerPot)$('#chessStatus').textContent+=` · WAGER POT ${Number(c.wagerPot).toLocaleString()}`;if(!c.fen)return;const rows=[];for(const row of c.fen.split(' ')[0].split('/')){const out=[];for(const ch of row){if(/\d/.test(ch))for(let i=0;i<+ch;i++)out.push(null);else out.push(ch)}rows.push(out)}$('#chessGrid').innerHTML=rows.flatMap((row,r)=>row.map((piece,col)=>{const sq=String.fromCharCode(97+col)+(8-r);return `<div class="sq ${(r+col)%2?'dark':'light'} ${selectedChess===sq?'sel':''}" data-sq="${sq}">${piece?pieces[piece]:''}</div>`})).join('');$$('#chessGrid .sq').forEach(x=>x.onclick=()=>chessClick(x.dataset.sq))}
 function chessClick(sq){if(!selectedChess){selectedChess=sq;renderChess();return}const from=selectedChess;selectedChess=null;let promotion;if(from[1]==='7'&&sq[1]==='8'||from[1]==='2'&&sq[1]==='1')promotion='q';call('chessMove',{move:{from,to:sq,promotion}}).then(r=>{if(!r.ok)toast(r.error||'Illegal move')});renderChess()}
 function nameModal(join){openModal(`<span class="eyebrow">${join?'JOIN ROOM':'CREATE ROOM'}</span><h2>${join?'Join a room':'Choose your name'}</h2><p class="modal-sub">Your name is saved on this device.</p>${join?'<label class="modal-label">ROOM CODE</label><input id="joinCode" class="modal-input" maxlength="6" placeholder="ABC123">':''}<label class="modal-label">YOUR NAME</label><input id="playerName" class="modal-input" maxlength="18" placeholder="Your name" value="${esc(savedName())}" autocomplete="nickname"><button class="btn primary full" id="modalSubmit">${join?'JOIN ROOM':'CREATE ROOM'}</button>`);setTimeout(()=>$('#playerName')?.focus(),30)}
-$('#dailyBtn').onclick=claimDaily;$('#profileBtn').onclick=showProfile;$('#historyBtn').onclick=showHistory;$('#leaderboardBtn').onclick=showLeaderboard;$('#roomsBtn').onclick=showRooms;$('#roomsBtnHero').onclick=showRooms;$('#refreshRooms').onclick=showRooms;$('#createBtn').onclick=()=>nameModal(false);$('#joinBtn').onclick=()=>nameModal(true);$('#modalClose').onclick=closeModal;$('#modal').onclick=e=>{if(e.target.id==='modal')closeModal()};$('#shopBtn').onclick=showShop;$('#withdrawBtn').onclick=()=>transfer('withdraw');$('#depositBtn').onclick=()=>transfer('deposit');$('#adBtn').onclick=async()=>{try{const j=await api('/api/refill',{method:'POST',body:'{}'});account=j.account;renderAccount();toast(`Free refill: +${j.amount.toLocaleString()} tokens`)}catch(e){toast(e.message)}};$$('.auth-tab').forEach(b=>b.onclick=()=>{authMode=b.dataset.auth;renderAuth()});document.addEventListener('click',e=>{if(e.target.id==='authSubmit')submitAuth();const buy=e.target.closest('[data-shop]');if(buy)buyItem(buy.dataset.shop);const eq=e.target.closest('[data-equip]');if(eq)equipItem(eq.dataset.equip)});
+$('#devToolsBtn').onclick=openDevTools;$('#dailyBtn').onclick=claimDaily;$('#profileBtn').onclick=showProfile;$('#historyBtn').onclick=showHistory;$('#leaderboardBtn').onclick=showLeaderboard;$('#roomsBtn').onclick=showRooms;$('#roomsBtnHero').onclick=showRooms;$('#refreshRooms').onclick=showRooms;$('#createBtn').onclick=()=>nameModal(false);$('#joinBtn').onclick=()=>nameModal(true);$('#modalClose').onclick=closeModal;$('#modal').onclick=e=>{if(e.target.id==='modal')closeModal()};$('#shopBtn').onclick=showShop;$('#withdrawBtn').onclick=()=>transfer('withdraw');$('#depositBtn').onclick=()=>transfer('deposit');$('#adBtn').onclick=async()=>{try{const j=await api('/api/refill',{method:'POST',body:'{}'});account=j.account;renderAccount();toast(`Free refill: +${j.amount.toLocaleString()} tokens`)}catch(e){toast(e.message)}};$$('.auth-tab').forEach(b=>b.onclick=()=>{authMode=b.dataset.auth;renderAuth()});document.addEventListener('click',e=>{if(e.target.id==='devLoginBtn'){(async()=>{try{const r=await fetch(API_URL+'/api/dev/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:$('#devUsername').value,password:$('#devPassword').value})});const j=await r.json();if(!r.ok){if(r.status===404)throw Error('Developer sign-in is not available on the backend this preview is using. Render is still running main; the feature-branch server must be deployed to a separate preview backend before this can work.');throw Error(j.error||'Sign-in failed')}sessionStorage.setItem('gh_dev_token',j.token);openDevTools()}catch(err){toast(err.message)}})()}if(e.target.id==='devResetRooms')devAction('/api/dev/reset-rooms','Reset all live rooms');if(e.target.id==='devResetLeaderboard')devAction('/api/dev/reset-leaderboard','Reset leaderboard and game history');if(e.target.id==='devLogout'){sessionStorage.removeItem('gh_dev_token');openDevTools()}if(e.target.id==='authSubmit')submitAuth();const buy=e.target.closest('[data-shop]');if(buy)buyItem(buy.dataset.shop);const eq=e.target.closest('[data-equip]');if(eq)equipItem(eq.dataset.equip)});
 document.addEventListener('click',e=>{if(e.target.id==='modalSubmit'){const name=rememberName($('#playerName').value);if(!name)return toast('Enter your name.');if($('#joinCode')){const code=$('#joinCode').value.trim().toUpperCase();if(code.length!==6)return toast('Enter the 6-character room code.');call('joinRoom',{code,name,accountToken}).then(r=>{if(!r.ok)toast(r.error);else closeModal()})}else call('createRoom',{name,accountToken}).then(r=>{if(!r.ok)toast(r.error);else{me={reconnectToken:r.reconnectToken};roomCode=r.code;saveSession();closeModal()}})}});
 $$('.game-tab').forEach(b=>b.onclick=()=>call('setGame',{game:b.dataset.game}).then(r=>{if(!r.ok)toast(r.error)}));
 $('#startBtn').onclick=async()=>{const entryBet=state?.game==='chess'?Math.max(0,Number($('#chessWager')?.value||0)):0;const r=await call('startGame',{entryBet});if(!r.ok)toast(r.error);};
 $('#addBotBtn').onclick=()=>openModal(`<span class="eyebrow">SERVER-SIDE BOTS</span><h2>Add a bot</h2><p class="modal-sub">Bots play on the server using the same legal actions as humans.</p><div class="bot-grid">${Object.entries({Ace:'Tight / conservative',Shark:'Aggressive / pressure',Bluff:'Frequent bluffs',Lucky:'Loose / call-heavy',Dealer:'Low variance',River:'Balanced',Pocket:'Tight-aggressive',Wildcard:'Unpredictable'}).map(([n,d])=>`<button class="bot-option" data-bot="${n}"><b>${n}</b><span>${d}</span></button>`).join('')}</div>`);
 document.addEventListener('click',e=>{const b=e.target.closest('[data-bot]');if(b)call('addBot',{type:b.dataset.bot}).then(r=>{if(!r.ok)toast(r.error);else closeModal()})});
+$
+document.addEventListener('gh:poker-physical-bet',async event=>{
+ const mine=mePlayer(),p=state?.poker||{},contribution=Math.floor(Number(event.detail?.contribution)||0);
+ const fail=message=>{toast(message);document.dispatchEvent(new CustomEvent('gh:poker-physical-bet-result',{detail:{ok:false}}));};
+ if(!state||state.game!=='poker')return fail('The poker table is not active.');
+ if(state.turnPlayerId!==mine?.id)return fail("It's not your turn.");
+ const stack=Math.max(0,Number(mine?.chips)||0),myBet=Math.max(0,Number(mine?.bet)||0),toCall=Math.max(0,Number(p.highestBet||0)-myBet);
+ if(contribution<=0)return fail('Click a physical chip stack to select chips.');
+ if(stack<=0)return fail('You have no chips left to bet.');
+ if(contribution>=stack){
+   const r=await call('pokerAction',{action:'allin'});
+   if(!r.ok)return fail(r.error);
+ }else if(toCall>0&&contribution===toCall){
+   const r=await call('pokerAction',{action:'call'});
+   if(!r.ok)return fail(r.error);
+ }else{
+   const amount=myBet+contribution,minTo=Number(p.highestBet||0)+Number(p.minRaise||50);
+   if(contribution<toCall)return fail('Select at least '+toCall.toLocaleString()+' chips to call.');
+   if(amount<minTo)return fail('Minimum raise is to '+minTo.toLocaleString()+'. Add more physical chips.');
+   const r=await call('pokerAction',{action:'raise',amount});
+   if(!r.ok)return fail(r.error);
+ }
+ document.dispatchEvent(new CustomEvent('gh:poker-physical-bet-result',{detail:{ok:true}}));
+});
+
 $$('[data-action]').forEach(b=>b.onclick=()=>{let amount=Number($('#raiseAmount').value);call('pokerAction',{action:b.dataset.action,amount}).then(r=>{if(!r.ok)toast(r.error)})});
 $$('[data-bj]').forEach(b=>b.onclick=()=>call('blackjackAction',{action:b.dataset.bj}).then(r=>{if(!r.ok)toast(r.error)}));$('#bjBetBtn').onclick=()=>{const amount=Number($('#bjBet').value);call('blackjackBet',{amount}).then(r=>{if(!r.ok)toast(r.error);else{toast(`Bet placed · ${amount.toLocaleString()} virtual tokens`);$('#bjBet').value='';}})};
 $('#spinBtn').onclick=()=>call('rouletteSpin',{}).then(r=>{if(!r.ok)toast(r.error)});
