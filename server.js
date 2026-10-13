@@ -215,26 +215,41 @@ function showdown(room){
   for(const level of levels){const contributors=room.players.filter(p=>p.totalBet>=level);const pot=(level-prev)*contributors.length;const eligible=contributors.filter(p=>!p.folded);if(pot>0&&eligible.length){let best=null,winners=[];for(const p of eligible){const r=eval7([...p.hole,...room.poker.community]);if(!best||cmp(r,best)>0){best=r;winners=[p]}else if(cmp(r,best)===0)winners.push(p)}const share=Math.floor(pot/winners.length),rem=pot%winners.length;winners.forEach((p,i)=>{const pay=share+(i===0?rem:0);p.chips+=pay;payouts.set(p.id,(payouts.get(p.id)||0)+pay);details.push({id:p.id,amount:pay,hand:handName(best),pot})})}prev=level}
   room.poker.pot=0;room.poker.phase='HAND_COMPLETE';room.turnPlayerId=null;room.poker.winners=[...payouts.entries()].map(([id,amount])=>{const d=details.find(x=>x.id===id);return {id,amount,hand:d?.hand||'Winner'}});room.poker.showdown=room.players.filter(p=>p.hole.length).map(p=>{let hand='Folded';if(!p.folded){const r=eval7([...p.hole,...room.poker.community]);hand=handName(r)}return {id:p.id,name:p.name,cards:p.hole.map(cardText),folded:p.folded,hand}});room.players.forEach(p=>{if(p.accountId&&accounts[p.accountId]&&p.totalBet>0){const a=ensureAccount(accounts[p.accountId]);const pay=payouts.get(p.id)||0;recordGame(a,'poker',pay-p.totalBet,pay>0?'win':'loss',pay)} });saveAccounts();room.players.forEach(p=>{if(p.hole.length)p.lastAction=room.poker.winners.some(w=>w.id===p.id)?'WIN':'SHOWDOWN'});say(room,room.poker.winners.map(w=>`${room.players.find(p=>p.id===w.id)?.name} wins ${w.amount} (${w.hand})`).join(' • ')||'Showdown complete.');room.turnEndsAt=Date.now()+9000;room.timer=setTimeout(()=>nextHand(room),9000);broadcast(room)}
 function nextHand(room){if(!rooms.has(room.code))return;const n=room.players.filter(p=>p.chips>0&&(p.connected||p.bot)).length;if(n>=2){room.poker.dealerIndex=(room.poker.dealerIndex+1)%room.players.length;startPokerHand(room)}else{room.status='LOBBY';room.poker.phase='LOBBY';broadcast(room)}}
-function estimateEquity(p,room,trials=72){
+function preflopStrength(hole){
+  if(!hole||hole.length!==2)return .5;
+  const value=c=>rv(c.r), a=value(hole[0]),b=value(hole[1]),hi=Math.max(a,b),lo=Math.min(a,b);
+  const pair=a===b, suited=hole[0].s===hole[1].s, gap=hi-lo;
+  let score=pair?.48+(hi-2)*.035:.12+(hi-2)*.025+(lo-2)*.012;
+  if(suited)score+=.055;
+  if(gap===1)score+=.045;else if(gap===2)score+=.02;else if(gap>=5)score-=.08;
+  if(hi>=12&&lo>=10)score+=.07;
+  return Math.max(.05,Math.min(.97,score));
+}
+function boardTexture(board){
+  if(!board.length)return {paired:false,flushDraw:false,straightDraw:false,wet:false};
+  const ranks=board.map(c=>rv(c.r)),suits={};board.forEach(c=>suits[c.s]=(suits[c.s]||0)+1);
+  const paired=new Set(ranks).size<ranks.length,flushDraw=Object.values(suits).some(n=>n>=3);
+  const uniq=[...new Set([...ranks,...(ranks.includes(14)?[1]:[])])].sort((a,b)=>a-b);
+  let straightDraw=false;for(let i=0;i<uniq.length;i++){const window=uniq.filter(v=>v>=uniq[i]&&v<=uniq[i]+4);if(window.length>=3){straightDraw=true;break}}
+  return {paired,flushDraw,straightDraw,wet:flushDraw||straightDraw};
+}
+function estimateEquity(p,room,trials=160){
   const opponents=room.players.filter(q=>q.id!==p.id&&!q.folded&&!q.allIn&&(q.chips+q.bet>0)&&(q.connected||q.bot));
   if(!p.hole.length||!opponents.length)return .5;
-  const board=room.poker.community.slice();
-  const known=new Set([...p.hole,...board].map(cardText));
+  const board=room.poker.community.slice(),known=new Set([...p.hole,...board].map(cardText));
   const unseen=SUITS.flatMap(s=>RANKS.map(r=>({r,s}))).filter(c=>!known.has(cardText(c)));
   let share=0;
   for(let t=0;t<trials;t++){
-    const deck=unseen.slice();
-    const draw=()=>{const i=Math.floor(Math.random()*deck.length);return deck.splice(i,1)[0]};
+    const deck=unseen.slice(),draw=()=>deck.splice(crypto.randomInt(deck.length),1)[0];
+    const opponentHands=opponents.map(()=>[draw(),draw()]);
     const runout=board.slice();while(runout.length<5)runout.push(draw());
-    const hero=eval7([...p.hole,...runout]);
-    let best=hero,heroBest=true,ties=1;
-    for(const opp of opponents){
-      const score=eval7([draw(),draw(),...runout]);
-      const c=cmp(score,best);
-      if(c>0){best=score;heroBest=false;ties=1}
+    const hero=eval7([...p.hole,...runout]);let best=hero,heroWins=true,ties=1;
+    for(const cards of opponentHands){
+      const score=eval7([...cards,...runout]),c=cmp(score,best);
+      if(c>0){best=score;heroWins=false;ties=1}
       else if(c===0)ties++;
     }
-    if(heroBest)share+=1/ties;
+    if(heroWins)share+=1/ties;
   }
   return share/trials;
 }
@@ -245,34 +260,54 @@ function botTick(room){
     if(p?.bot&&!p._botPending){
       p._botPending=true;
       setTimeout(()=>{
-        p._botPending=false;if(room.turnPlayerId!==p.id)return;
+        p._botPending=false;
+        if(!rooms.has(room.code)||room.turnPlayerId!==p.id||!room.poker.needsAction.has(p.id))return;
         const cfg=BOT_TYPES[p.botType]||BOT_TYPES.River;
-        const call=required(room,p),equity=estimateEquity(p,room,72),pot=Math.max(1,room.poker.pot);
-        const potOdds=call/(pot+call),r=Math.random();
-        let action=call?'call':'check',amount;
-        const minTo=room.poker.highestBet+room.poker.minRaise;
-        const maxTo=p.bet+p.chips;
+        const call=required(room,p),pot=Math.max(1,room.poker.pot),potOdds=call/(pot+call);
+        const preflop=room.poker.community.length===0;
+        const equity=estimateEquity(p,room,preflop?110:190);
+        const strength=preflop?preflopStrength(p.hole):equity;
+        const texture=boardTexture(room.poker.community);
+        const r=crypto.randomInt(10000)/10000;
+        const minTo=room.poker.highestBet+room.poker.minRaise,maxTo=p.bet+p.chips;
         const canRaise=maxTo>=minTo&&p.chips>0;
-        const valueRaise=equity>=Math.max(.64,potOdds+.25);
-        const bluffRaise=equity>.24&&r<cfg.bluff*.16;
+        const position=(room.players.indexOf(p)-room.poker.dealerIndex+room.players.length)%Math.max(1,room.players.length);
+        const positionalBonus=position<=1?.035:position>=room.players.length-2?-.015:0;
+        const adjusted=strength+positionalBonus;
+        const riskTolerance=(cfg.aggression-.5)*.12+(cfg.tight<.5?.035:-.025);
+        const foldThreshold=Math.max(.08,potOdds+.025-riskTolerance);
+        const bluffChance=cfg.bluff*(preflop?.12:.30)*(texture.wet?.65:1);
+        let action=call?'call':'check',amount;
+        const strong=adjusted>=Math.max(.60,potOdds+.22);
+        const medium=adjusted>=Math.max(.30,potOdds-.06);
+        const facingLargeBet=call>pot*.72;
         if(call>0){
-          if(equity<potOdds+.025&&r>cfg.bluff*.35)action='fold';
-          else if(canRaise&&valueRaise&&r<cfg.aggression*.7){action='raise';amount=Math.min(maxTo,room.poker.highestBet+room.poker.minRaise*(equity>.82?2:1))}
-          else if(canRaise&&equity>.48&&r<cfg.aggression*.12){action='raise';amount=minTo}
-          else action='call';
-        }else if(canRaise&&((equity>.66&&r<cfg.aggression*.58)||bluffRaise)){
-          action='raise';amount=Math.min(maxTo,room.poker.highestBet+room.poker.minRaise*(equity>.82?2:1));
+          if(adjusted<foldThreshold&&r>bluffChance)action='fold';
+          else if(canRaise&&strong&&r<cfg.aggression*.72){action='raise';amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*(adjusted>.82?.78:.52)))))}
+          else if(canRaise&&adjusted>.52&&r<cfg.aggression*.13){action='raise';amount=minTo}
+          else if(facingLargeBet&&adjusted<potOdds+.10&&r>bluffChance*.5)action='fold';
+          else if(medium||r<bluffChance)action='call';
+          else action='fold';
+        }else{
+          const valueBet=adjusted>=.57&&r<(.24+cfg.aggression*.52);
+          const semiBluff=texture.wet&&adjusted>=.28&&r<bluffChance;
+          const pressureBluff=!preflop&&adjusted>=.18&&r<bluffChance*.55&&room.poker.phase!=='RIVER';
+          if(canRaise&&(valueBet||semiBluff||pressureBluff)){
+            action='raise';
+            const fraction=adjusted>.82?.72:adjusted>.65?.55:.42;
+            amount=Math.min(maxTo,Math.max(minTo,room.poker.highestBet+Math.max(room.poker.minRaise,Math.floor(pot*fraction))));
+          }
         }
         if(action==='raise'&&(!Number.isFinite(amount)||amount<minTo||amount>maxTo))action=call?'call':'check';
         pokerAction(room,p,action,amount);
-      },900+crypto.randomInt(900));
+      },650+crypto.randomInt(1200));
     }
   }
   if(room.game==='blackjack'&&room.turnPlayerId){
     const p=room.players.find(x=>x.id===room.turnPlayerId);
     if(p?.bot&&!p._botPending){
       p._botPending=true;
-      setTimeout(()=>{p._botPending=false;const h=room.blackjack.hands[p.id];if(h&&!h.done){const total=bjValue(h.cards).total;const soft=bjValue(h.cards).soft;const dealerUp=room.blackjack.dealer[0]?rv(room.blackjack.dealer[0].r):7;const action=total<12?'hit':total<17?(soft||dealerUp>=7?'hit':'stand'):total===17&&soft&&dealerUp>=9?'hit':'stand';bjAction(room,p,action)}},900+crypto.randomInt(700));
+      setTimeout(()=>{p._botPending=false;const h=room.blackjack.hands[p.id];if(h&&!h.done){const total=bjValue(h.cards).total,soft=bjValue(h.cards).soft,dealerUp=room.blackjack.dealer[0]?rv(room.blackjack.dealer[0].r):7;const action=total<12?'hit':total<17?(soft||dealerUp>=7?'hit':'stand'):total===17&&soft&&dealerUp>=9?'hit':'stand';bjAction(room,p,action)}},900+crypto.randomInt(700));
     }
   }
 }
