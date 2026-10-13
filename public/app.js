@@ -109,7 +109,7 @@ function renderPoker(){
    myTurn,stack:Math.max(0,Number(mine?.chips)||0),toCall,
    minContribution:Math.max(1,Number(p.highestBet||0)+Number(p.minRaise||50)-Number(mine?.bet||0))
  }}));
- if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}
+ if($('#callBtn')){const b=$('#callBtn');b.textContent=toCall?'CALL '+toCall:'CHECK';b.dataset.action=toCall?'call':'check';}const raiseBtn=$('[data-action="raise"]');if(raiseBtn)raiseBtn.textContent=toCall?'RAISE TO':'BET / RAISE TO';
  $$('[data-action]').forEach(btn=>btn.disabled=!myTurn||phase==='HAND_COMPLETE');
  if($('#raiseAmount')){$('#raiseAmount').placeholder='Raise to '+Math.max((p.highestBet||0)+(p.minRaise||50),(mine?.bet||0)+1);$('#raiseAmount').disabled=!myTurn||phase==='HAND_COMPLETE'}
  const guide=$('#handGuide');
