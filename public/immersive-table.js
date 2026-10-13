@@ -8,7 +8,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const css = document.createElement('style');
   css.textContent = `
     .game-main{position:relative;isolation:isolate;min-height:0!important}
-    .immersive-scene{position:absolute;inset:0 0 72px;width:100%;height:calc(100% - 72px);min-height:420px;display:block;z-index:1;pointer-events:auto;touch-action:manipulation}
+    .immersive-scene{position:absolute;inset:0 0 72px;width:100%;height:calc(100% - 72px);min-height:420px;display:block;z-index:1;pointer-events:auto;touch-action:none}
+    #tableControlHint{position:absolute;z-index:5;top:64px;left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100% - 36px);padding:9px 14px;border:1px solid rgba(105,174,219,.45);border-radius:999px;background:rgba(4,20,36,.84);box-shadow:0 8px 26px #0007;color:#d7ecff;font:800 9px/1.35 'DM Sans',sans-serif;letter-spacing:.095em;text-align:center;pointer-events:none;backdrop-filter:blur(10px)}
+    @media(max-width:760px){#tableControlHint{top:54px;width:calc(100% - 24px);font-size:8px;letter-spacing:.04em;padding:8px 10px;white-space:normal}}
     .game-main.immersive-active>.board:not(.hidden){position:relative!important;z-index:2!important;background:transparent!important;border:0!important;padding:0!important;min-height:560px!important;pointer-events:none!important}
     .game-main.immersive-active>.poker-board .poker-stage{background:transparent!important;perspective:none!important}.game-main.immersive-active .table-shadow,.game-main.immersive-active .casino-ambient{display:none!important}.game-main.immersive-active .table-felt{background:transparent!important;border-color:transparent!important;box-shadow:none!important;transform:none!important}.game-main.immersive-active .table-felt:after{display:none!important}.game-main.immersive-active .bj-table{background:transparent!important;border:0!important;box-shadow:none!important}.game-main.immersive-active .community .card,.game-main.immersive-active .my-hand .card,.game-main.immersive-active .seat .hole .card,.game-main.immersive-active #dealerCards .card,.game-main.immersive-active #bjHands .card{visibility:hidden!important}
     .game-main.immersive-active>.board:not(.hidden) .table-felt,.game-main.immersive-active>.board:not(.hidden) .bj-table{visibility:hidden!important}
@@ -43,6 +45,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   canvas.className = 'immersive-scene';
   canvas.setAttribute('aria-label','Real-time 3D casino table');
   root.prepend(canvas);
+  const tableControlHint=document.createElement('div');
+  tableControlHint.id='tableControlHint';
+  tableControlHint.textContent='DOUBLE-CLICK / DOUBLE-TAP FELT TO CHECK OR CALL  ·  DRAG TO LOOK AROUND  ·  SCROLL TO ZOOM  ·  CLICK CHIPS TO BET';
+  root.appendChild(tableControlHint);
   const hud = document.createElement('div');
   hud.className = 'immersive-hud';
   hud.innerHTML = '<div>GAME HUNK<span class="sub">PRIVATE CLUB · VIRTUAL TABLE</span></div><div class="phase" id="scenePhase">TABLE OPEN</div>';
@@ -112,10 +118,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
   const feltCanvas=document.createElement('canvas');feltCanvas.width=2048;feltCanvas.height=2048;const feltCtx=feltCanvas.getContext('2d');
-  const feltGradient=feltCtx.createRadialGradient(512,480,90,512,512,720);feltGradient.addColorStop(0,'#2a83c5');feltGradient.addColorStop(.62,'#15598f');feltGradient.addColorStop(1,'#082e50');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,1024,1024);
+  const feltGradient=feltCtx.createRadialGradient(1024,920,120,1024,1024,1450);feltGradient.addColorStop(0,'#247bb4');feltGradient.addColorStop(.55,'#155b8c');feltGradient.addColorStop(1,'#082c4b');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,2048,2048);
   let feltSeed=82417;const rand=()=>{feltSeed=(feltSeed*1664525+1013904223)>>>0;return feltSeed/4294967296};
-  for(let i=0;i<54000;i++){const x=rand()*1024,y=rand()*1024,a=.018+rand()*.055;feltCtx.strokeStyle=rand()>.5?`rgba(218,231,207,${a})`:`rgba(0,0,0,${a*1.3})`;feltCtx.lineWidth=.45+rand()*.8;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*5,y+1+rand()*3);feltCtx.stroke()}
-  feltCtx.globalAlpha=.14;feltCtx.strokeStyle='#b7c8a8';feltCtx.lineWidth=1;for(let y=0;y<1024;y+=6){feltCtx.beginPath();feltCtx.moveTo(0,y);feltCtx.lineTo(1024,y);feltCtx.stroke()}feltCtx.globalAlpha=1;
+  for(let i=0;i<90000;i++){const x=rand()*2048,y=rand()*2048,a=.012+rand()*.04;feltCtx.strokeStyle=rand()>.5?`rgba(211,235,255,${a})`:`rgba(0,0,0,${a*1.25})`;feltCtx.lineWidth=.4+rand()*.7;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*7,y+1+rand()*4);feltCtx.stroke()}
+  feltCtx.globalAlpha=.12;feltCtx.strokeStyle='#c7e3f5';feltCtx.lineWidth=1;for(let y=0;y<2048;y+=9){feltCtx.beginPath();feltCtx.moveTo(0,y);feltCtx.lineTo(2048,y);feltCtx.stroke()}feltCtx.globalAlpha=1;
   const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(1.35,1.35);feltTexture.colorSpace=THREE.SRGBColorSpace;feltTexture.anisotropy=8;
   const feltNormalCanvas=document.createElement('canvas');feltNormalCanvas.width=256;feltNormalCanvas.height=256;const fn= feltNormalCanvas.getContext('2d');fn.fillStyle='rgb(128,128,255)';fn.fillRect(0,0,256,256);let ns=44821;for(let i=0;i<12000;i++){ns=(ns*1664525+1013904223)>>>0;const x=ns%256;ns=(ns*1664525+1013904223)>>>0;const y=ns%256;const v=112+(ns%32);fn.fillStyle=`rgb(${v},${v},255)`;fn.fillRect(x,y,1,1)}const feltNormal=new THREE.CanvasTexture(feltNormalCanvas);feltNormal.wrapS=feltNormal.wrapT=THREE.RepeatWrapping;feltNormal.repeat.set(2,2);
   const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,normalMap:feltNormal,normalScale:new THREE.Vector2(.28,.28),roughness:.96,metalness:0});
@@ -126,7 +132,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const pbrLoader=new THREE.TextureLoader();pbrLoader.setCrossOrigin('anonymous');
   function loadPolyHaven(asset,mapName,onLoad,repeatX=2,repeatY=1){const url=`https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/${asset}/${asset}_${mapName}_2k.jpg`;pbrLoader.load(url,tex=>{tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.repeat.set(repeatX,repeatY);tex.anisotropy=8;if(mapName==='diff')tex.colorSpace=THREE.SRGBColorSpace;onLoad(tex)},undefined,()=>{});}
 
-  loadPolyHaven('stretch_poplin','diff',t=>{feltMat.map=t;feltMat.color.set('#6e9fc6');feltMat.needsUpdate=true},4,4);
+  // Keep the custom deep-blue felt albedo; use PBR normal and roughness maps only.
   loadPolyHaven('stretch_poplin','nor_gl',t=>{feltMat.normalMap=t;feltMat.normalScale=new THREE.Vector2(.34,.34);feltMat.needsUpdate=true},4,4);
   loadPolyHaven('stretch_poplin','rough',t=>{feltMat.roughnessMap=t;feltMat.needsUpdate=true},4,4);
   loadPolyHaven('wood_table_001','diff',t=>{railMat.map=t;railMat.color.set('#ffffff');railMat.needsUpdate=true},2,1);
@@ -154,7 +160,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   // Build a real room around the table instead of leaving the scene in a black void.
   const backWall=new THREE.Mesh(new THREE.PlaneGeometry(18,7),mat('#171713',.88));
   backWall.position.set(0,2.1,-7.2);scene.add(backWall);
-  const wallWood=[mat('#29251d',.55),mat('#211e18',.62),mat('#30291e',.52)];
+  const wallWood=[mat('#14283a',.55),mat('#0e1c2a',.62),mat('#20374a',.52)];
   for(let i=0;i<13;i++){
     const x=-7.2+i*1.2;
     const panel=new THREE.Mesh(new THREE.BoxGeometry(1.08,4.9,.12),wallWood[i%wallWood.length]);
@@ -172,6 +178,15 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const brass=new THREE.Mesh(new THREE.BoxGeometry(.72,.035,.035),goldMat);
     brass.position.set(-2.4+i*1.2,3.7,-6.96);scene.add(brass);
   }
+  // Additional lounge architecture: framed artwork, blue-lit wall niches, and brass trim.
+  for(let i=0;i<3;i++){
+    const x=-3.8+i*3.8;const frame=new THREE.Mesh(new THREE.BoxGeometry(1.15,1.35,.09),goldMat);frame.position.set(x,2.05,-6.88);scene.add(frame);
+    const artCanvas=document.createElement('canvas');artCanvas.width=256;artCanvas.height=320;const ax=artCanvas.getContext('2d');const ag=ax.createLinearGradient(0,0,256,320);ag.addColorStop(0,'#143f61');ag.addColorStop(1,'#07192b');ax.fillStyle=ag;ax.fillRect(0,0,256,320);ax.strokeStyle='#c9a45f';ax.lineWidth=5;ax.strokeRect(18,18,220,284);ax.beginPath();ax.arc(128,142,66,0,Math.PI*2);ax.stroke();ax.beginPath();ax.moveTo(56,224);ax.lineTo(128,74);ax.lineTo(200,224);ax.closePath();ax.stroke();
+    const artTexture=new THREE.CanvasTexture(artCanvas);artTexture.colorSpace=THREE.SRGBColorSpace;const art=new THREE.Mesh(new THREE.PlaneGeometry(1.03,1.23),new THREE.MeshBasicMaterial({map:artTexture}));art.position.set(x,2.05,-6.81);scene.add(art);
+  }
+  const plantMat=mat('#173d2d',.8),potMat=mat('#182432',.38,.18);
+  for(const x of [-5.4,5.4]){mesh(new THREE.CylinderGeometry(.25,.3,.48,24),potMat,scene,x,-.88,-4.9,1,1,1);for(let i=0;i<7;i++){const leaf=new THREE.Mesh(new THREE.CapsuleGeometry(.08,.58,4,8),plantMat);leaf.position.set(x+Math.sin(i*2.4)*.22,-.25+(i%3)*.13,-4.9+Math.cos(i*2.4)*.18);leaf.rotation.z=Math.sin(i*2.4)*.75;leaf.rotation.x=Math.cos(i*2.4)*.45;scene.add(leaf)}}
+  const chandelier=new THREE.Group();scene.add(chandelier);const stem=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,.7,12),goldMat);stem.position.set(0,3.7,-1.2);chandelier.add(stem);const ring=new THREE.Mesh(new THREE.TorusGeometry(.8,.035,10,48),goldMat);ring.position.set(0,3.35,-1.2);ring.rotation.x=Math.PI/2;chandelier.add(ring);for(let i=0;i<8;i++){const a=i*Math.PI/4;const bulb=new THREE.Mesh(new THREE.SphereGeometry(.09,16,12),mat('#dceeff',.25,.05));bulb.position.set(Math.cos(a)*.8,3.28,-1.2+Math.sin(a)*.8);chandelier.add(bulb)}
   // Dark wood panels and warm brass inlays give the rail a real manufactured edge.
   for(let i=0;i<8;i++){
     const seam=new THREE.Mesh(new THREE.BoxGeometry(.018,.018,4.1),mat('#51402a',.5,.2));
@@ -200,6 +215,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const seatGroup=new THREE.Group();scene.add(seatGroup);
   const dealerGroup=new THREE.Group();scene.add(dealerGroup);
   const seatArmRefs=new Map();
+  const seatHeadRefs=new Map();
   const chipMaterials=['#e7d9b8','#bd342e','#2566b1','#252725','#d2a23d','#31855a'].map(c=>mat(c,.72,.015));
   const chipEdge=mat('#f0e4c8',.42,.08);
   function makeChip(x,y,z,colorIndex=0,rot=0){
@@ -293,7 +309,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:t,transparent:true,depthTest:true,depthWrite:false}));sp.scale.set(1.65,.42,1);return sp;
   }
   function rebuildSeats(){
-    clearGroup(seatGroup);seatArmRefs.clear();
+    clearGroup(seatGroup);seatArmRefs.clear();seatHeadRefs.clear();
     const nodes=gameType==='poker'?[...document.querySelectorAll('#seats .seat')]:[];
     const skins=['#c58d6d','#8e5d43','#e0b18b','#ad7659','#d39a73','#77513e','#edc5a0','#9b684d'];
     const jackets=['#202c2a','#312d29','#283441','#3b2926','#26352d','#332d3c','#222927','#40332a'];
@@ -318,22 +334,24 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         const skinMat=mat(skins[i%skins.length],.61),hairMat=mat(hairs[i%hairs.length],.74),jacketMat=mat(jackets[i%jackets.length],.58),shirtMat=mat(i%3===0?'#e8e0d2':i%3===1?'#d8d7cf':'#bfc7bd',.7);
         mesh(new THREE.CapsuleGeometry(.42,.54,6,14),jacketMat,avatar,0,.52,0,1.25,1,.72);
         mesh(new THREE.CylinderGeometry(.13,.15,.28,18),skinMat,avatar,0,.98,.02);
-        mesh(new THREE.SphereGeometry(.36,40,32),skinMat,avatar,0,1.34,.04,.88,1.08,.88);
-        mesh(new THREE.SphereGeometry(.37,32,24),hairMat,avatar,0,1.54,-.015,.98,.58,.92);
-        mesh(new THREE.SphereGeometry(.16,20,16),hairMat,avatar,-.31,1.42,.005,.55,1.2,.72);
-        mesh(new THREE.SphereGeometry(.16,20,16),hairMat,avatar,.31,1.42,.005,.55,1.2,.72);
+        const headPivot=new THREE.Group();headPivot.position.set(0,1.02,.02);avatar.add(headPivot);
+        mesh(new THREE.SphereGeometry(.36,40,32),skinMat,headPivot,0,.32,.02,.88,1.08,.88);
+        mesh(new THREE.SphereGeometry(.37,32,24),hairMat,headPivot,0,.52,-.035,.98,.58,.92);
+        mesh(new THREE.SphereGeometry(.16,20,16),hairMat,headPivot,-.31,.40,-.015,.55,1.2,.72);
+        mesh(new THREE.SphereGeometry(.16,20,16),hairMat,headPivot,.31,.40,-.015,.55,1.2,.72);
         mesh(new THREE.BoxGeometry(.22,.18,.035),shirtMat,avatar,0,.83,.27,1,1,1);
-        mesh(new THREE.SphereGeometry(.065,16,12),skinMat,avatar,-.34,1.31,.035,.65,1,1);
-        mesh(new THREE.SphereGeometry(.065,16,12),skinMat,avatar,.34,1.31,.035,.65,1,1);
+        mesh(new THREE.SphereGeometry(.065,16,12),skinMat,headPivot,-.34,.29,.015,.65,1,1);
+        mesh(new THREE.SphereGeometry(.065,16,12),skinMat,headPivot,.34,.29,.015,.65,1,1);
         const eyeMat=mat('#151412',.35),eyeWhite=mat('#eee8dc',.4);
-        mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,avatar,-.115,1.38,.345,1,.75,.6);
-        mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,avatar,.115,1.38,.345,1,.75,.6);
-        mesh(new THREE.SphereGeometry(.019,12,10),eyeMat,avatar,-.11,1.38,.368);
-        mesh(new THREE.SphereGeometry(.019,12,10),eyeMat,avatar,.12,1.38,.368);
-        mesh(new THREE.CapsuleGeometry(.025,.11,4,8),hairMat,avatar,-.115,1.435,.355,1,.55,.55);
-        mesh(new THREE.CapsuleGeometry(.025,.11,4,8),hairMat,avatar,.115,1.435,.355,1,.55,.55);
-        mesh(new THREE.ConeGeometry(.048,.12,12),skinMat,avatar,0,1.27,.385,1,.85,.8);
-        mesh(new THREE.BoxGeometry(.11,.018,.018),mat('#713e37',.56),avatar,0,1.18,.35);
+        mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,headPivot,-.115,.36,.325,1,.75,.6);
+        mesh(new THREE.SphereGeometry(.038,12,8),eyeWhite,headPivot,.115,.36,.325,1,.75,.6);
+        mesh(new THREE.SphereGeometry(.019,12,10),eyeMat,headPivot,-.11,.36,.348);
+        mesh(new THREE.SphereGeometry(.019,12,10),eyeMat,headPivot,.12,.36,.348);
+        mesh(new THREE.CapsuleGeometry(.025,.11,4,8),hairMat,headPivot,-.115,.415,.335,1,.55,.55);
+        mesh(new THREE.CapsuleGeometry(.025,.11,4,8),hairMat,headPivot,.115,.415,.335,1,.55,.55);
+        mesh(new THREE.ConeGeometry(.048,.12,12),skinMat,headPivot,0,.25,.365,1,.85,.8);
+        mesh(new THREE.BoxGeometry(.11,.018,.018),mat('#713e37',.56),headPivot,0,.16,.33);
+        seatHeadRefs.set(i,{avatar,headPivot});
         const armL=new THREE.Group(),armR=new THREE.Group();avatar.add(armL,armR);
         armL.position.set(-.43,.78,.02);armR.position.set(.43,.78,.02);
         const limbGeo=new THREE.CapsuleGeometry(.135,.5,5,10),handGeo=new THREE.SphereGeometry(.13,14,10);
@@ -381,7 +399,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function animateHeroAction(action){
     const normalized=String(action).toUpperCase();
     if(normalized==='TABLE TAP'){heroTapStart=performance.now();heroArm.visible=true;return;}
-    if(!['CALL','RAISE','ALL-IN','CHECK'].includes(normalized))return;
+    if(!['CALL','RAISE','ALL-IN','CHECK','FOLD'].includes(normalized))return;
     heroActionStart=performance.now();heroArm.visible=true;
     if(['CALL','RAISE','ALL-IN'].includes(normalized))throwChips(.55,3.0,normalized==='ALL-IN'?5:3,normalized==='RAISE'?4:1);
   }
@@ -392,7 +410,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   function syncScene(force=false){
     const pokerVisible=!document.querySelector('#pokerBoard')?.classList.contains('hidden');
     const bjVisible=!document.querySelector('#blackjackBoard')?.classList.contains('hidden');
-    const active=pokerVisible||bjVisible;root.classList.toggle('immersive-active',active);canvas.style.display=active?'block':'none';hud.style.display=active?'flex':'none';
+    const active=pokerVisible||bjVisible;root.classList.toggle('immersive-active',active);canvas.style.display=active?'block':'none';hud.style.display=active?'flex':'none';tableControlHint.style.display=active?'block':'none';
     if(!active)return;
     gameType=bjVisible?'blackjack':'poker';
     const phase=(document.querySelector('#streetChip')?.textContent||document.querySelector('#bjActions .turn-badge')?.textContent||'TABLE OPEN').trim();
@@ -454,7 +472,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
       const potCount=potValue>0?Math.max(1,Math.min(10,Math.ceil(Math.log10(potValue+1)*2))):0;
       for(let i=0;i<potCount;i++)makeChip(1.35+(i%3)*.19,.17+Math.floor(i/3)*.058,-.72,i%5);
       for(let col=0;col<3;col++){const count=Math.max(0,Math.ceil((potCount-col)/3));if(count)addChipMark(1.35+col*.19,.17+(count-1)*.058+.03,-.72,col%5)}
-      const denominations=[{value:25,color:2,x:-2.45},{value:100,color:3,x:-1.55},{value:500,color:4,x:1.55},{value:1000,color:5,x:2.45}];
+      const denominations=[{value:25,color:2,x:-1.25},{value:100,color:3,x:-.42},{value:500,color:4,x:.42},{value:1000,color:5,x:1.25}];
       denominations.forEach(stack=>{
         for(let i=0;i<5;i++){
           const chip=makeChip(stack.x,.17+i*.058,1.78,stack.color,i*.12);
@@ -463,8 +481,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
         }
         addChipMark(stack.x,.17+4*.058+.03,1.78,stack.color);
         const denominationLabel=labelSprite(stack.value===1000?'1K':String(stack.value),'#f4d99c');
-        denominationLabel.position.set(stack.x,.54,2.08);
-        denominationLabel.scale.set(.66,.22,1);
+        denominationLabel.position.set(stack.x,.59,2.05);
+        denominationLabel.scale.set(.82,.28,1);
         seatGroup.add(denominationLabel);
       });
       previousCardKeys=nextCardKeys;
@@ -508,7 +526,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     pointerNdc.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);
     pointerRaycaster.setFromCamera(pointerNdc,camera);
     const hits=pointerRaycaster.intersectObjects([cardGroup,chipsGroup],true);
-    if(!hits.length)return;
+    if(!hits.length){const now=performance.now(),near=lastTapPosition&&Math.hypot(event.clientX-lastTapPosition.x,event.clientY-lastTapPosition.y)<42;if(near&&now-lastTapAt<340){lastTapAt=0;lastTapPosition=null;handleTableDoubleTap(event)}else{lastTapAt=now;lastTapPosition={x:event.clientX,y:event.clientY}}return;}
     let target=hits[0].object;
     while(target&&target!==scene&&!target.userData.isHeroCard&&target.userData.pokerChipValue==null)target=target.parent;
     if(!target||target===scene)return;
@@ -534,10 +552,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }
   });
 
+  let lastTapAt=0,lastTapPosition=null,lastTableActionAt=0;
+  function handleTableDoubleTap(event){const now=performance.now();if(now-lastTableActionAt<450)return;lastTableActionAt=now;if(gameType==='poker'&&physicalBetState.myTurn){const actionButton=document.querySelector('#callBtn');if(actionButton&&!actionButton.disabled){actionButton.click();return;}}animateHeroAction('TABLE TAP');}
   canvas.addEventListener('dblclick',event=>{
     const rect=canvas.getBoundingClientRect();pointerNdc.set(((event.clientX-rect.left)/rect.width)*2-1,-((event.clientY-rect.top)/rect.height)*2+1);pointerRaycaster.setFromCamera(pointerNdc,camera);
     if(pointerRaycaster.intersectObjects([cardGroup,chipsGroup],true).length)return;
-    animateHeroAction('TABLE TAP');
+    handleTableDoubleTap(event);
   });
   canvas.addEventListener('wheel',event=>{event.preventDefault();cameraDistance=THREE.MathUtils.clamp(cameraDistance+event.deltaY*.006,5.4,10.5);},{passive:false});
 
@@ -569,6 +589,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }
     camera.position.set(Math.sin(cameraYaw)*cameraDistance, cameraTarget.y+Math.sin(cameraPitch)*cameraDistance+Math.sin(t*.17)*.004, Math.cos(cameraYaw)*cameraDistance);
     camera.lookAt(cameraTarget);
+    for(const {avatar,headPivot} of seatHeadRefs.values()){avatar.updateMatrixWorld(true);const localView=avatar.worldToLocal(camera.position.clone());const targetYaw=THREE.MathUtils.clamp(Math.atan2(localView.x,localView.z),-.72,.72);headPivot.rotation.y+=(targetYaw-headPivot.rotation.y)*.075;headPivot.rotation.x+=(THREE.MathUtils.clamp(-localView.y/Math.max(1,localView.length),-.16,.16)-headPivot.rotation.x)*.045;}
     if(heroTapStart){const elapsed=now-heroTapStart;const tap=elapsed<440?Math.max(0,Math.sin(elapsed/110*Math.PI)):0;heroArm.visible=elapsed<440;heroArm.position.set(.42,.32-tap*.1,2.9-tap*.58);if(elapsed>=440)heroTapStart=0;}
     else if(!heroActionStart){heroArm.position.set(.42+Math.sin(t*.7)*.018,.32+Math.sin(t*1.1)*.012,2.9+Math.sin(t*.6)*.025);heroArm.rotation.z=Math.sin(t*.5)*.012;}
     if(heroActionStart){
