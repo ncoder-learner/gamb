@@ -35,7 +35,11 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     .immersive-hud{position:absolute;top:18px;left:20px;right:20px;display:flex;justify-content:space-between;align-items:flex-start;z-index:2;pointer-events:none;font:800 10px/1.4 'DM Sans',sans-serif;letter-spacing:.17em;color:#e5cc8d;text-shadow:0 2px 8px #000}
     .immersive-hud .sub{display:block;color:#a7b3a6;font-size:8px;letter-spacing:.2em;margin-top:4px}
     .immersive-hud .phase{border:1px solid #d3b16a66;border-radius:999px;background:#07150edb;padding:8px 12px}
-    @media(max-width:760px){.game-main{min-height:620px!important}.immersive-scene{min-height:500px}.game-main.immersive-active>.board:not(.hidden){min-height:540px}.immersive-hud{top:12px;left:12px;right:12px}.immersive-hud .sub{display:none}}
+    .chip-control{position:absolute;right:20px;bottom:104px;z-index:7;display:flex;align-items:center;gap:8px;padding:9px 10px;border:1px solid rgba(211,178,104,.45);border-radius:13px;background:rgba(5,10,9,.9);box-shadow:0 10px 28px #0008;backdrop-filter:blur(14px);color:#f5ecd9;font:600 10px/1.2 'DM Sans',sans-serif;pointer-events:auto}
+    .chip-control .staged-copy{display:flex;flex-direction:column;gap:4px;min-width:74px}.chip-control .staged-copy span{font-size:8px;letter-spacing:.14em;color:#c2b38f}.chip-control strong{font:700 17px/1 'Space Grotesk',sans-serif;color:#f0d18b;font-variant-numeric:tabular-nums}
+    .chip-control button{border:1px solid rgba(213,177,98,.5);border-radius:8px;background:#c6a15c;color:#17140e;padding:9px 10px;font:800 9px/1 'DM Sans',sans-serif;letter-spacing:.08em;cursor:pointer}.chip-control button.secondary{background:#111b18;color:#e8ddc4;border-color:#ffffff24}.chip-control button:disabled{opacity:.4;cursor:not-allowed}
+    .chip-control .chip-hint{position:absolute;right:0;top:calc(100% + 5px);white-space:nowrap;color:#c7c2b4;font-size:8px;text-shadow:0 2px 5px #000}
+    @media(max-width:760px){.game-main{min-height:620px!important}.immersive-scene{min-height:500px}.game-main.immersive-active>.board:not(.hidden){min-height:540px}.immersive-hud{top:12px;left:12px;right:12px}.immersive-hud .sub{display:none}.chip-control{right:9px;bottom:98px;gap:5px;padding:7px}.chip-control .chip-hint{display:none}.chip-control .staged-copy{min-width:58px}.chip-control button{padding:8px 7px;font-size:8px}}
   `;
   document.head.appendChild(css);
 
@@ -47,6 +51,18 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   hud.className = 'immersive-hud';
   hud.innerHTML = '<div>GAME HUNK<span class="sub">PRIVATE CLUB · VIRTUAL TABLE</span></div><div class="phase" id="scenePhase">TABLE OPEN</div>';
   root.appendChild(hud);
+  const chipControl=document.createElement('div');
+  chipControl.className='chip-control';
+  chipControl.innerHTML='<div class="staged-copy"><span>STAGED BET</span><strong id="stagedChipAmount">0</strong></div><button id="throwStagedChips" type="button">THROW IN</button><button id="clearStagedChips" class="secondary" type="button">CLEAR</button><div class="chip-hint">CLICK CHIPS TO BUILD · DOUBLE-CLICK FELT TO CHECK</div>';
+  root.appendChild(chipControl);
+  let stagedChipAmount=0;
+  const stagedAmountEl=chipControl.querySelector('#stagedChipAmount');
+  const throwStagedButton=chipControl.querySelector('#throwStagedChips');
+  const clearStagedButton=chipControl.querySelector('#clearStagedChips');
+  function updateStagedChips(){stagedAmountEl.textContent=stagedChipAmount.toLocaleString();throwStagedButton.disabled=stagedChipAmount<=0;}
+  clearStagedButton.addEventListener('click',()=>{stagedChipAmount=0;updateStagedChips()});
+  throwStagedButton.addEventListener('click',()=>{if(stagedChipAmount>0)document.dispatchEvent(new CustomEvent('gh:poker-action',{detail:{action:'throw-in',contribution:stagedChipAmount}}))});
+  document.addEventListener('gh:poker-action-result',e=>{if(e.detail?.ok){stagedChipAmount=0;updateStagedChips()}});
 
   const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.7));
@@ -151,6 +167,8 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   const chipsGroup=new THREE.Group();scene.add(chipsGroup);
   const cardGroup=new THREE.Group();scene.add(cardGroup);
+  const pointerRaycaster=new THREE.Raycaster(),pointerNdc=new THREE.Vector2();
+  let peekOpen=false;
   const cardFlights=[];
   let previousCardKeys=new Set();
   const seatGroup=new THREE.Group();scene.add(seatGroup);
@@ -158,8 +176,10 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const seatArmRefs=new Map();
   const chipMaterials=['#e7d9b8','#bd342e','#2566b1','#252725','#d2a23d','#31855a'].map(c=>mat(c,.72,.015));
   const chipEdge=mat('#f0e4c8',.42,.08);
-  function makeChip(x,y,z,colorIndex=0,rot=0){
+  const CHIP_VALUES=[1,5,25,100,500,1000];
+  function makeChip(x,y,z,colorIndex=0,rot=0,interactive=false){
     const g=new THREE.Group();
+    if(interactive){g.userData.interactiveChip=true;g.userData.chipValue=CHIP_VALUES[colorIndex%CHIP_VALUES.length];}
     const body=new THREE.Mesh(new THREE.CylinderGeometry(.17,.17,.055,32),chipMaterials[colorIndex%chipMaterials.length]);body.castShadow=true;body.receiveShadow=true;g.add(body);
     const top=new THREE.Mesh(new THREE.CylinderGeometry(.122,.122,.057,32),mat(['#f4e9d2','#e8c8c2','#c5d8ed','#d3d2ca','#f1dfa9','#c5dfcc'][colorIndex%6],.76,.01));top.position.y=.002;g.add(top);
     const ring=new THREE.Mesh(new THREE.TorusGeometry(.145,.008,5,32),chipEdge);ring.rotation.x=Math.PI/2;ring.position.y=.029;g.add(ring);
@@ -175,11 +195,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const mark=new THREE.Mesh(new THREE.PlaneGeometry(.19,.19),new THREE.MeshBasicMaterial({map:texture,transparent:true,depthWrite:false}));mark.rotation.x=-Math.PI/2;mark.position.set(x,y,z);chipsGroup.add(mark);
   }
 
-  function chipStack(x,z,count,color){
-    for(let i=0;i<count;i++){makeChip(x,.17+i*.058,z,color,i*.12);if(i===count-1)addChipMark(x,.17+(count-1)*.058+.03,z,color);}
+  function chipStack(x,z,count,color,interactive=false){
+    for(let i=0;i<count;i++)makeChip(x,.17+i*.058,z,color,i*.12,interactive);
+    if(count)addChipMark(x,.17+(count-1)*.058+.03,z,color);
   }
   chipStack(-3.35,1.05,6,1);chipStack(-3.0,1.25,4,0);chipStack(3.2,-.65,5,2);chipStack(3.48,-.42,3,4);
   for(let i=0;i<5;i++)makeChip(-.35+i*.18,.17, -.45, i%5, i*.3);
+  // The player's denomination stacks sit within reach and are clickable to stage a real bet.
+  for(let d=0;d<6;d++)chipStack(-2.72+d*1.09,1.88,3+(d%3),d,true);
 
   // The dealer is a 3D character silhouette, not a flat avatar pinned over the table.
   function mesh(geometry, material, parent, x,y,z, sx=1,sy=1,sz=1){
@@ -218,19 +241,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=4;return t;
   }
-  function addCard(label,x,z,rot=0,back=false,animateDeal=false){
-    const front=cardTexture(label||'?',back), side=mat('#e0d7c4',.48);
-    // Keep the beveled card body and use a separate plane for the printed face.
-    // ExtrudeGeometry's default UVs are world-unit based, which can crop a CanvasTexture.
+  function addCard(label,x,z,rot=0,back=false,animateDeal=false,key=''){
+    const frontTexture=cardTexture(label||'?',false),backTexture=cardTexture('',true),side=mat('#e0d7c4',.48);
+    // A card rests horizontal on the felt. YXZ keeps the second angle as a flat in-plane yaw.
     const card=new THREE.Group();
-    card.position.set(x,.37,z);card.rotation.set(-Math.PI/2+.58,rot,0);
+    card.rotation.order='YXZ';card.position.set(x,.145,z);card.rotation.set(-Math.PI/2,rot,0);
     const body=new THREE.Mesh(cardGeo,side);
     body.castShadow=true;body.receiveShadow=true;card.add(body);
-    const face=new THREE.Mesh(
-      new THREE.PlaneGeometry(.675,.935),
-      new THREE.MeshBasicMaterial({map:front,side:THREE.DoubleSide,toneMapped:false})
-    );
+    const face=new THREE.Mesh(new THREE.PlaneGeometry(.675,.935),new THREE.MeshBasicMaterial({map:back?backTexture:frontTexture,side:THREE.DoubleSide,toneMapped:false}));
     face.position.z=.03;face.receiveShadow=true;card.add(face);
+    card.userData={cardKey:key,label,frontTexture,backTexture,face,isHeroCard:key.startsWith('hero:'),basePosition:card.position.clone(),baseRotation:card.rotation.clone(),peekProgress:peekOpen&&key.startsWith('hero:')?1:0,peekTarget:peekOpen&&key.startsWith('hero:')?1:0};
+    if(card.userData.isHeroCard){face.material.map=backTexture;face.material.needsUpdate=true;}
     cardGroup.add(card);
     if(animateDeal){
       const targetPosition=card.position.clone(),targetRotation=card.rotation.clone();
@@ -309,6 +330,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
 
   function getCards(selector){return [...document.querySelectorAll(selector)].flatMap(el=>[...el.querySelectorAll('.card')].map(c=>({label:(c.textContent||'').trim().replace(/\s+/g,' ')||'?',back:c.classList.contains('back')})));}
   let signature='',lastRender=0,gameType='poker',lastSeatSig='';
+  let lookTargetX=0,lookTargetY=0,lookX=0,lookY=0,lookDrag=null;
 
   // Player-side forearms and hands enter frame from the seated first-person viewpoint.
   const actionFxGroup = new THREE.Group(); scene.add(actionFxGroup);
@@ -332,6 +354,14 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     }
   }
   let heroActionStart=0;
+  function setHeroPeek(open){
+    peekOpen=open;
+    cardGroup.children.forEach(card=>{
+      if(!card.userData.isHeroCard)return;
+      card.userData.peekTarget=open?1:0;
+      if(open){card.userData.face.material.map=card.userData.frontTexture;card.userData.face.material.needsUpdate=true;}
+    });
+  }
   function animateHeroAction(action){
     if(!['CALL','RAISE','ALL-IN','CHECK'].includes(String(action).toUpperCase()))return;
     heroActionStart=performance.now();heroArm.visible=true;
@@ -378,14 +408,17 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     const nextCardKeys=new Set();
     const placeCard=(key,label,x,z,rot=0,back=false)=>{
       nextCardKeys.add(key);
-      return addCard(label,x,z,rot,back,!previousCardKeys.has(key));
+      const isHero=key.startsWith('hero:');
+      const card=addCard(label,x,z,rot,isHero?true:back,!previousCardKeys.has(key),key);
+      if(isHero&&peekOpen){card.userData.peekTarget=1;card.userData.face.material.map=card.userData.frontTexture;card.userData.face.material.needsUpdate=true;}
+      return card;
     };
     if(gameType==='poker'){
       const community=getCards('#community');
       const communityStart=-(Math.max(community.length,5)-1)*.41;
       community.forEach((c,i)=>placeCard('community:'+i+':'+c.label,c.label,communityStart+i*.82,-.35,(i-2)*.012,c.back));
       const mine=getCards('#myHand');
-      mine.forEach((c,i)=>placeCard('hero:'+i+':'+c.label,c.label,(i-(mine.length-1)/2)*.88,1.28,(i-(mine.length-1)/2)*.045,c.back));
+      mine.forEach((c,i)=>placeCard('hero:'+i+':'+c.label,c.label,(i-(mine.length-1)/2)*.88,1.28,(i-(mine.length-1)/2)*.045,true));
       const seats=[...document.querySelectorAll('#seats .seat:not(.mine)')];
       seats.forEach((el,i)=>{
         const allSeats=[...document.querySelectorAll('#seats .seat')],seatIndex=allSeats.indexOf(el);
