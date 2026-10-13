@@ -147,7 +147,7 @@ function renderBJSummary(){
  if(!panel){panel=document.createElement('section');panel.id='bjRoundSummary';panel.className='bj-round-summary';host.insertAdjacentElement('afterend',panel)}
  if(b.phase!=='RESULT'||!hand?.bet){panel.innerHTML='';panel.classList.remove('visible');return}
  const dealerCards=b.dealer||[];
- const dealerTotal=dealerCards.reduce((sum,c)=>{const r=String(c).replace(/[♠♥♦♣]/g,'');if(r==='A')return sum+11;if(['K','Q','J','T','10'].includes(r))return sum+10;return sum+(Number(r)||0)},0);
+ let dealerTotal=0,dealerAces=0;dealerCards.forEach(c=>{const r=String(c).replace(/[♠♥♦♣]/g,'');if(r==='A'){dealerAces++;dealerTotal+=11}else if(['K','Q','J','T','10'].includes(r))dealerTotal+=10;else dealerTotal+=Number(r)||0});while(dealerTotal>21&&dealerAces>0){dealerTotal-=10;dealerAces--;}
  const result=hand.result||'ROUND COMPLETE',won=result==='WIN'||result==='BLACKJACK',pushed=result==='PUSH';
  const title=won?'YOU WIN':pushed?'PUSH · BET RETURNED':result==='BUST'?'YOU BUSTED':'DEALER WINS';
  const detail=result==='BLACKJACK'?'Natural blackjack pays 3:2.':result==='BUST'?'Your '+hand.total+' points exceeded 21.':pushed?'Both hands finished at '+hand.total+'. Your wager was returned.':won?'Your '+hand.total+' beats the dealer’s '+dealerTotal+'.':'Dealer '+dealerTotal+' beats your '+hand.total+'.';
