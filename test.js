@@ -79,3 +79,13 @@ test('all selector iteration uses querySelectorAll helper',()=>{const app=fs.rea
 
 test('double-click and mobile double-tap trigger a real check/call action',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/function handleTableDoubleTap/);assert.match(s,/actionButton\.click\(\)/);assert.match(s,/now-lastTapAt<340/);assert.match(s,/DOUBLE-CLICK \/ DOUBLE-TAP FELT TO CHECK OR CALL/);});
 test('blue lounge rendering includes detailed felt, compact readable chips and head tracking',()=>{const s=fs.readFileSync(path.join(root,'public/immersive-table.js'),'utf8');assert.match(s,/#155b8c/);assert.match(s,/const headPivot=new THREE\.Group\(\)/);assert.match(s,/seatHeadRefs\.set/);assert.match(s,/avatar\.worldToLocal\(camera\.position\.clone\(\)\)/);assert.match(s,/denominations=\[\{value:25,color:2,x:-1\.25\}/);assert.match(s,/chandelier/);});
+
+test('game result UI explains blackjack outcomes, roulette settlements, and poker hand comparisons',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ for(const marker of ['renderBJSummary','bj-result-comparison','rouletteOutcomeDetails','WHY THE WINNER WON','ranks[b.hand]'])assert.ok(app.includes(marker),marker);
+});
+test('developer maintenance endpoints require server-side credentials and authorization',()=>{
+ const s=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ for(const marker of ['/api/dev/login','/api/dev/reset-leaderboard','/api/dev/reset-rooms','DEV_PASSWORD','adminFromRequest'])assert.ok(s.includes(marker),marker);
+ assert.doesNotMatch(s,/DEV_PASSWORD\s*[:=]\s*['"]dev123['"]/);
+});
