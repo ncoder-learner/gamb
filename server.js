@@ -25,6 +25,8 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 let accounts = {};
 try { if (fs.existsSync(DATA_FILE)) accounts = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')); } catch {}
 const sessions = new Map();
+const adminSessions = new Map();
+const devLoginAttempts = new Map();
 const SHOP = [
   {id:'lucky-chip',name:'Lucky Chip',rarity:'Common',price:500,slot:'chip',description:'A polished lucky chip for your table.'},
   {id:'neon-back',name:'Neon Card Back',rarity:'Uncommon',price:2500,slot:'cardBack',description:'Electric neon card backs.'},
@@ -67,6 +69,41 @@ app.post('/api/reward-ad',(req,res)=>{const a=accountFromToken(String(req.header
 app.get('/health', (_req,res)=>res.json({ok:true,service:'game-hunk'}));
 const server = http.createServer(app);
 const io = new Server(server,{cors:{origin:CLIENT_ORIGIN,methods:['GET','POST']}});
+function adminFromRequest(req){
+ const token=String(req.headers.authorization||'').replace(/^Bearer\s+/i,'');
+ const expires=adminSessions.get(token);
+ if(!token||!expires||expires<Date.now()){adminSessions.delete(token);return false}
+ return true;
+}
+app.post('/api/dev/login',(req,res)=>{
+ const ip=String(req.ip||req.socket?.remoteAddress||'unknown'),now=Date.now(),attempt=devLoginAttempts.get(ip)||{count:0,until:0};
+ if(attempt.until>now&&attempt.count>=6)return res.status(429).json({error:'Too many attempts. Try again in 10 minutes.'});
+ const expectedUser=String(process.env.DEV_USERNAME||'dev'),expectedPass=String(process.env.DEV_PASSWORD||'');
+ const username=String(req.body?.username||''),password=String(req.body?.password||'');
+ const userOk=crypto.timingSafeEqual(Buffer.from(username.padEnd(128,'\0').slice(0,128)),Buffer.from(expectedUser.padEnd(128,'\0').slice(0,128)));
+ const passA=crypto.createHash('sha256').update(password).digest(),passB=crypto.createHash('sha256').update(expectedPass||crypto.randomBytes(32).toString('hex')).digest();
+ const passOk=crypto.timingSafeEqual(passA,passB);
+ if(!expectedPass||!userOk||!passOk){attempt.count=attempt.until>now?attempt.count+1:1;attempt.until=now+600000;devLoginAttempts.set(ip,attempt);return res.status(401).json({error:'Invalid developer credentials or developer access is not configured.'})}
+ devLoginAttempts.delete(ip);
+ const token=crypto.randomBytes(32).toString('hex');adminSessions.set(token,Date.now()+3600000);
+ res.json({ok:true,token,expiresIn:3600});
+});
+app.get('/api/dev/status',(req,res)=>res.json({ok:true,configured:!!process.env.DEV_PASSWORD}));
+app.post('/api/dev/reset-leaderboard',(req,res)=>{
+ if(!adminFromRequest(req))return res.status(401).json({error:'Developer sign-in required.'});
+ for(const a of Object.values(accounts)){ensureAccount(a);a.stats={gamesPlayed:0,wins:0,losses:0,largestWin:0,byGame:{}};a.history=[]}
+ saveAccounts();res.json({ok:true,message:'Leaderboard stats and game history reset. Accounts and token balances were preserved.'});
+});
+app.post('/api/dev/reset-rooms',(req,res)=>{
+ if(!adminFromRequest(req))return res.status(401).json({error:'Developer sign-in required.'});
+ for(const room of rooms.values()){
+  clearTimer(room);
+  if(room.blackjack?.dealTimer)clearTimeout(room.blackjack.dealTimer);
+  for(const p of room.players){if(!p.socketId)continue;const client=io.sockets.sockets.get(p.socketId);if(client){client.leave(room.code);client.data.room=null;client.data.player=null;client.emit('devRoomReset',{message:'Developer reset live rooms. Return to the floor and create a new table.'})}}
+ }
+ rooms.clear();res.json({ok:true,message:'All live rooms cleared.'});
+});
+setInterval(()=>{const now=Date.now();for(const [token,exp] of adminSessions)if(exp<now)adminSessions.delete(token);for(const [ip,a] of devLoginAttempts)if(a.until<now)devLoginAttempts.delete(ip)},60000).unref();
 
 const PORT = Number(process.env.PORT || 3000);
 const MAX_PLAYERS = 8;
