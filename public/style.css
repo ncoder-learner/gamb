@@ -321,15 +321,6 @@ body.compact-card-game #funPanel{max-height:min(420px,62dvh);margin-top:8px;marg
 }
 
 
-/* Shared stack rail: every game keeps each player's total table chips visible. */
-.game-chip-bar{display:flex;gap:8px;overflow-x:auto;padding:0 2px 10px;margin:0 0 10px;scrollbar-width:thin;flex-shrink:0}
-.game-chip-card{flex:0 0 auto;min-width:126px;display:grid;grid-template-columns:1fr auto;gap:3px 10px;padding:10px 12px;border:1px solid #293129;border-radius:12px;background:linear-gradient(145deg,#141914,#0a0d0a);box-shadow:0 7px 18px #0003}
-.game-chip-card>span{font-size:8px;letter-spacing:.14em;color:#8d958b;font-weight:900}
-.game-chip-card>b{grid-column:1/-1;font-size:11px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.game-chip-card>strong{grid-column:1/-1;color:#e7c979;font-size:15px;font-variant-numeric:tabular-nums}
-.game-chip-card>strong small{font-size:8px;letter-spacing:.1em;color:#8b8e7e}
-.game-chip-card.active{border-color:#d4ad56;box-shadow:0 0 0 1px #d4ad5622,0 8px 24px #0004}
-.game-chip-card.you{background:linear-gradient(145deg,#1d2116,#0c100b)}
 /* Chess Club: a focused board, explicit side ownership, readable move history. */
 .chess-board{padding:clamp(14px,2vw,28px);min-height:0!important}
 .chess-header{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 auto 18px;max-width:1100px}
@@ -370,7 +361,7 @@ body.compact-card-game #funPanel{max-height:min(420px,62dvh);margin-top:8px;marg
 .chess-move-list li i{font-style:normal;color:#f0d184;margin-left:5px}
 .chess-bot-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:900px){.chess-wrap{grid-template-columns:minmax(0,1fr);max-width:620px}.chess-info{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}.chess-status,.chess-turn-hint,.chess-moves-heading,.chess-move-list{grid-column:1/-1}.chess-captured{margin-bottom:4px}.chess-move-list{max-height:150px}}
-@media(max-width:540px){.game-chip-card{min-width:112px;padding:8px 10px}.chess-header{align-items:flex-start}.chess-header .btn{padding:9px;font-size:9px}.chess-board{padding:10px}.chess-grid{border-width:4px}.sq{font-size:clamp(22px,8vw,38px)}.chess-info{padding:12px}.chess-bot-grid{grid-template-columns:1fr}}
+@media(max-width:540px){.chess-header{align-items:flex-start}.chess-header .btn{padding:9px;font-size:9px}.chess-board{padding:10px}.chess-grid{border-width:4px}.sq{font-size:clamp(22px,8vw,38px)}.chess-info{padding:12px}.chess-bot-grid{grid-template-columns:1fr}}
 
 .sq.piece-white{color:#fffaf0;text-shadow:0 1px 2px #10130f,0 0 1px #10130f}
 .sq.piece-black{color:#20251f;text-shadow:0 1px 0 #f3e9d2,0 0 1px #f3e9d2}
