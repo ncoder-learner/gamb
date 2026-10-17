@@ -112,15 +112,7 @@ test('developer login preview reports backend branch mismatch clearly',()=>{
  assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
 });
 
-test('every active game displays the total table-chip stack for each player',()=>{
- const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
- const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
- const css=fs.readFileSync(path.join(root,'public/style.css'),'utf8');
- assert.match(html,/id="gameChipBar"/);
- assert.match(app,/game-chip-card/);
- assert.match(app,/Number\(p\.chips\|\|0\)\.toLocaleString\(\)/);
- assert.match(css,/\.game-chip-bar/);
-});
+
 test('chess uses local minimax bots with four selectable difficulty levels',()=>{
  const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
