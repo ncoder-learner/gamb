@@ -57,6 +57,10 @@ Socket.IO connects browsers to the Node server. The server owns rooms, cards, de
 
 The rebuild branch is `rebuild/game-hunk-v3`. It adds profile/history/daily/leaderboard APIs, persistent session hashes, quick-play games, and regression tests while preserving the existing multiplayer game engine.
 
+## Developer tools in deployment
+
+The developer console requires `DEV_USERNAME` (defaults to `dev`) and a non-empty `DEV_PASSWORD` in the Render web service environment. Configure these on both the production service and any preview backend that should expose the console. The UI checks `/api/dev/status` and explains when the backend is not configured; never hard-code the password in the repository. Reset endpoints require a server-issued developer session and are intentionally destructive.
+
 ## Required Render environment variable
 
 Set `CLIENT_ORIGIN` to your exact Netlify production URL, for example:

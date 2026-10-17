@@ -11,6 +11,8 @@ test('netlify publishes public',()=>{const s=fs.readFileSync(path.join(root,'net
 test('configured socket URL is secure and remote',()=>{const s=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.ok(s.includes('https://gamb-feature-preview.onrender.com')||s.includes('https://gamb-eu6t.onrender.com'));assert.doesNotMatch(s,/localhost:3000/) });
 test('server exposes health and authoritative poker phases',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');for(const x of ['/health','PREFLOP','FLOP','TURN','RIVER','SHOWDOWN','HAND_COMPLETE','pokerAction','addBot','blackjackAction','rouletteBet','chessMove','quickGame','/api/history','/api/daily','/api/leaderboard'])assert.match(s,new RegExp(x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))});
 
+test('leaderboard exposes current vault, largest loss, and net profit stats',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.match(s,/largestLoss/);assert.match(s,/netProfit/);assert.match(s,/vault:a\.tokens/);assert.match(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),/data-leaderboard-sort/)});
+test('daily loot box is only shown until claimed for the current UTC day',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8'),html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');assert.match(app,/function renderDailyLootbox/);assert.match(app,/account\.daily\?\.lastClaim!==today/);assert.match(html,/id="dailyLootboxBtn"/);assert.doesNotMatch(html,/id="dailyBtn"/)});
 test('virtual-token safety and no payment rails',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.doesNotMatch(s,/stripe|paypal|coinbase|withdrawal.*cash|cash.*withdrawal/i);assert.match(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),/Tokens are virtual|no cash value/i)});
 test('server-side randomness uses crypto',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.match(s,/crypto\.randomInt/);});
 
@@ -109,7 +111,7 @@ test('optional game hub features are present without changing authoritative game
 });
 test('developer login preview reports backend branch mismatch clearly',()=>{
  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
- assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
+ assert.match(app,/This backend does not expose developer sign-in/);
 });
 
 
