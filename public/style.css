@@ -257,7 +257,15 @@ html[data-fun-accent="gold"]{--accent:#d5a04a;--gold:#d5a04a}
 body.compact-card-game{overflow:hidden}
 body.compact-card-game #game{height:calc(100vh - 76px);height:calc(100dvh - 76px);min-height:0;overflow:hidden}
 body.compact-card-game .game-layout{display:block!important;width:100%;height:calc(100vh - 76px);height:calc(100dvh - 76px);min-height:0!important;padding:6px 10px!important;overflow:hidden}
-body.compact-card-game .game-layout>.side{display:none!important}
+body.compact-card-game .game-layout>.side{display:block!important;position:fixed!important;top:82px!important;left:10px!important;width:auto!important;height:auto!important;max-height:none!important;padding:0!important;background:transparent!important;border:0!important;box-shadow:none!important;z-index:95!important;pointer-events:none!important;overflow:visible!important}
+body.compact-card-game .game-layout>.side>*:not(.side-top):not(.side-chat){display:none!important}
+body.compact-card-game .game-layout>.side .side-top{display:flex!important;align-items:center;gap:6px;padding:0!important;pointer-events:auto!important}
+body.compact-card-game .game-layout>.side .side-top .room-pill{display:none!important}
+body.compact-card-game .game-layout>.side .back-btn{min-height:32px!important;padding:7px 10px!important;font-size:10px!important;white-space:nowrap!important;background:rgba(9,12,9,.94)!important;border:1px solid #343b31!important;border-radius:8px!important}
+body.compact-card-game .game-layout>.side .side-chat{display:none!important;position:fixed!important;top:122px!important;right:10px!important;left:auto!important;bottom:auto!important;width:min(310px,calc(100vw - 20px))!important;max-height:min(260px,45dvh)!important;margin:0!important;padding:10px!important;background:rgba(12,15,12,.97)!important;border:1px solid #343b31!important;border-radius:12px!important;box-shadow:0 12px 36px rgba(0,0,0,.45)!important;pointer-events:auto!important;z-index:96!important}
+body.compact-card-game .game-layout>.side .side-chat.chat-open{display:flex!important;flex-direction:column!important}
+body.compact-card-game .game-layout>.side .side-chat .chat-log{min-height:40px!important;max-height:150px!important;flex:1 1 auto!important}
+body.compact-card-game .game-layout>.side .side-chat .chat-form{flex:0 0 auto!important}
 body.compact-card-game .game-main{height:100%;min-height:0!important;display:grid!important;grid-template-rows:minmax(0,1fr) auto;gap:6px;justify-content:stretch;overflow:hidden}
 body.compact-card-game .game-main>.board:not(.hidden){height:100%!important;max-height:none!important;min-height:0!important;margin:0!important;padding:4px!important;border-radius:14px!important;overflow:hidden!important}
 body.compact-card-game .game-main.immersive-active>.board:not(.hidden){min-height:0!important;height:100%!important}
