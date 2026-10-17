@@ -255,8 +255,8 @@ html[data-fun-accent="gold"]{--accent:#d5a04a;--gold:#d5a04a}
 
 /* Compact, viewport-locked poker and blackjack layout. */
 body.compact-card-game{overflow:hidden}
-body.compact-card-game #game{height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:0;overflow:hidden}
-body.compact-card-game .game-layout{display:block!important;width:100%;height:calc(100vh - 64px);height:calc(100dvh - 64px);min-height:0!important;padding:6px 10px!important;overflow:hidden}
+body.compact-card-game #game{height:calc(100vh - 76px);height:calc(100dvh - 76px);min-height:0;overflow:hidden}
+body.compact-card-game .game-layout{display:block!important;width:100%;height:calc(100vh - 76px);height:calc(100dvh - 76px);min-height:0!important;padding:6px 10px!important;overflow:hidden}
 body.compact-card-game .game-layout>.side{display:none!important}
 body.compact-card-game .game-main{height:100%;min-height:0!important;display:grid!important;grid-template-rows:minmax(0,1fr) auto;gap:6px;justify-content:stretch;overflow:hidden}
 body.compact-card-game .game-main>.board:not(.hidden){height:100%!important;max-height:none!important;min-height:0!important;margin:0!important;padding:4px!important;border-radius:14px!important;overflow:hidden!important}
@@ -294,6 +294,10 @@ body.compact-card-game #funPanel{max-height:min(420px,62dvh);margin-top:8px;marg
  body.compact-card-game #pokerActions .actions input{padding:5px;width:84px}
  body.compact-card-game #bjActions #bjBet{height:32px}
  body.compact-card-game #bjHud .bj-hud-detail,body.compact-card-game #bjHud .bj-hud-bet{display:none}
+}
+@media(max-width:650px){
+ body.compact-card-game #game{height:calc(100vh - 64px);height:calc(100dvh - 64px)}
+ body.compact-card-game .game-layout{height:calc(100vh - 64px);height:calc(100dvh - 64px)}
 }
 @media(max-width:760px){
  body.compact-card-game .game-layout{padding:4px!important}
