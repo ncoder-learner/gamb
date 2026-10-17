@@ -1,4 +1,4 @@
-const IS_FEATURE_PREVIEW = location.hostname.includes('gamb-git-feature-first-person-po-52cdba') || location.hostname.includes('gamb-mgcekrd5d') || location.hostname.includes('gamb-git-fix-compact-game-ui-school-performance');
+const IS_FEATURE_PREVIEW = location.hostname.includes('gamb-git-feature-first-person-po-52cdba') || (location.hostname.startsWith('gamb-') && location.hostname.endsWith('-neal-singhal-s-projects.vercel.app'));
 const SOCKET_URL = window.POKER_SERVER_URL || (IS_FEATURE_PREVIEW ? 'https://gamb-feature-preview.onrender.com' : 'https://gamb-eu6t.onrender.com');
 const API_URL = window.POKER_SERVER_URL || SOCKET_URL;
 const socket = window.io ? io(SOCKET_URL,{auth:{accountToken:localStorage.getItem('gh_account_token')||''},transports:['websocket','polling'],reconnection:true,reconnectionAttempts:Infinity}) : {connected:false,auth:{},on(){return this},emit(event,payload,cb){if(typeof cb==='function')cb({ok:false,error:'Realtime server unavailable. Refresh the page and try again.'});return this},disconnect(){return this},connect(){return this}};
