@@ -111,7 +111,7 @@ test('optional game hub features are present without changing authoritative game
 });
 test('developer login preview reports backend branch mismatch clearly',()=>{
  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
- assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
+ assert.match(app,/This backend does not expose developer sign-in/);
 });
 
 
