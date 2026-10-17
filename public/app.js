@@ -9,7 +9,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const savedName=()=>localStorage.getItem('gh_name')||'';
 function rememberName(v){v=String(v||'').trim().slice(0,18);if(v)localStorage.setItem('gh_name',v);return v}
 function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2800)}
-function showScreen(id){$$('.screen').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active')}
+function showScreen(id){if(id!=='game')document.body.classList.remove('compact-card-game');$('.screen').forEach(x=>x.classList.remove('active'));$('#'+id).classList.add('active')}
 function openModal(html){$('#modalContent').innerHTML=html;$('#modal').classList.remove('hidden')}
 function closeModal(){$('#modal').classList.add('hidden')}
 function call(event,payload){return new Promise(resolve=>{let done=false;const finish=r=>{if(done)return;done=true;clearTimeout(timer);resolve(r||{})};const timer=setTimeout(()=>finish({ok:false,error:'The server did not respond. Check your connection and try again.'}),8000);try{socket.emit(event,payload||{},finish)}catch(e){finish({ok:false,error:e.message||'Connection failed.'})}})}
