@@ -111,3 +111,26 @@ test('developer login preview reports backend branch mismatch clearly',()=>{
  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
  assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
 });
+
+
+test('chess uses local minimax bots with four selectable difficulty levels',()=>{
+ const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ for(const marker of ['CHESS_BOT_LEVELS','minimaxChess','chooseChessMove','orderChessMoves','beginner','casual','club','expert'])assert.ok(server.includes(marker),marker);
+ for(const marker of ['data-chess-bot="beginner"','data-chess-bot="casual"','data-chess-bot="club"','data-chess-bot="expert"','type:\'Chess Bot\''])assert.ok(app.includes(marker),marker);
+ assert.match(server,/g\.undo\(\)/);
+});
+test('chess assigns distinct sides and rejects moves from the wrong player',()=>{
+ const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ assert.match(server,/new Map\(room\.players\.filter\(p=>p\.connected\|\|p\.bot\)\.map\(p=>\[p\.id,p\]\)\)/);
+ assert.match(server,/if\(duelists\[0\]\.id===duelists\[1\]\.id\)/);
+ assert.match(server,/if\(side!==p\.id\)return \{ok:false,error:'It is not your turn\.'\}/);
+});
+test('chess provides perspective flipping, legal target highlighting, move history, and result state',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+ const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ for(const marker of ['chessFlipBtn','chessMoveList','whiteCaptured','blackCaptured','legal-target','last-from','piece-white','piece-black'])assert.ok(app.includes(marker),marker);
+ for(const marker of ['id="chessFlipBtn"','id="chessMoveList"','id="chessOpponentBar"','id="chessSelfBar"'])assert.ok(html.includes(marker),marker);
+ for(const marker of ['legalMoves','lastMove','gameOver','winnerId'])assert.ok(server.includes(marker),marker);
+});
