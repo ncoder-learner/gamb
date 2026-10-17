@@ -93,10 +93,9 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
     if(selectedPhysicalBet>0&&physicalBetState.myTurn)document.dispatchEvent(new CustomEvent('gh:poker-physical-bet',{detail:{contribution:selectedPhysicalBet}}));
   });
 
-  const renderer = new THREE.WebGLRenderer({canvas, antialias:true, alpha:true, powerPreference:'high-performance'});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2.5));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const renderer = new THREE.WebGLRenderer({canvas, antialias:false, alpha:true, powerPreference:'low-power'});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.25));
+  renderer.shadowMap.enabled = false;
   renderer.outputColorSpace = THREE.SRGBColorSpace;
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.15;
@@ -117,12 +116,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   const rim = new THREE.PointLight(0xf1bf65, 46, 15); rim.position.set(0,4,-6); scene.add(rim);
 
   const mat=(color,roughness=.7,metalness=0)=>new THREE.MeshStandardMaterial({color,roughness,metalness});
-  const feltCanvas=document.createElement('canvas');feltCanvas.width=2048;feltCanvas.height=2048;const feltCtx=feltCanvas.getContext('2d');
-  const feltGradient=feltCtx.createRadialGradient(1024,920,120,1024,1024,1450);feltGradient.addColorStop(0,'#247bb4');feltGradient.addColorStop(.55,'#155b8c');feltGradient.addColorStop(1,'#082c4b');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,2048,2048);
+  const feltCanvas=document.createElement('canvas');feltCanvas.width=1024;feltCanvas.height=1024;const feltCtx=feltCanvas.getContext('2d');
+  const feltGradient=feltCtx.createRadialGradient(512,460,60,512,512,725);feltGradient.addColorStop(0,'#247bb4');feltGradient.addColorStop(.55,'#155b8c');feltGradient.addColorStop(1,'#082c4b');feltCtx.fillStyle=feltGradient;feltCtx.fillRect(0,0,1024,1024);
   let feltSeed=82417;const rand=()=>{feltSeed=(feltSeed*1664525+1013904223)>>>0;return feltSeed/4294967296};
-  for(let i=0;i<90000;i++){const x=rand()*2048,y=rand()*2048,a=.012+rand()*.04;feltCtx.strokeStyle=rand()>.5?`rgba(211,235,255,${a})`:`rgba(0,0,0,${a*1.25})`;feltCtx.lineWidth=.4+rand()*.7;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*7,y+1+rand()*4);feltCtx.stroke()}
-  feltCtx.globalAlpha=.12;feltCtx.strokeStyle='#c7e3f5';feltCtx.lineWidth=1;for(let y=0;y<2048;y+=9){feltCtx.beginPath();feltCtx.moveTo(0,y);feltCtx.lineTo(2048,y);feltCtx.stroke()}feltCtx.globalAlpha=1;
-  const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(1.35,1.35);feltTexture.colorSpace=THREE.SRGBColorSpace;feltTexture.anisotropy=8;
+  for(let i=0;i<14000;i++){const x=rand()*1024,y=rand()*1024,a=.012+rand()*.04;feltCtx.strokeStyle=rand()>.5?`rgba(211,235,255,${a})`:`rgba(0,0,0,${a*1.25})`;feltCtx.lineWidth=.4+rand()*.7;feltCtx.beginPath();feltCtx.moveTo(x,y);feltCtx.lineTo(x+(rand()-.5)*4,y+1+rand()*3);feltCtx.stroke()}
+  feltCtx.globalAlpha=.12;feltCtx.strokeStyle='#c7e3f5';feltCtx.lineWidth=1;for(let y=0;y<1024;y+=12){feltCtx.beginPath();feltCtx.moveTo(0,y);feltCtx.lineTo(1024,y);feltCtx.stroke()}feltCtx.globalAlpha=1;
+  const feltTexture=new THREE.CanvasTexture(feltCanvas);feltTexture.wrapS=feltTexture.wrapT=THREE.RepeatWrapping;feltTexture.repeat.set(1.35,1.35);feltTexture.colorSpace=THREE.SRGBColorSpace;feltTexture.anisotropy=2;
   const feltNormalCanvas=document.createElement('canvas');feltNormalCanvas.width=256;feltNormalCanvas.height=256;const fn= feltNormalCanvas.getContext('2d');fn.fillStyle='rgb(128,128,255)';fn.fillRect(0,0,256,256);let ns=44821;for(let i=0;i<12000;i++){ns=(ns*1664525+1013904223)>>>0;const x=ns%256;ns=(ns*1664525+1013904223)>>>0;const y=ns%256;const v=112+(ns%32);fn.fillStyle=`rgb(${v},${v},255)`;fn.fillRect(x,y,1,1)}const feltNormal=new THREE.CanvasTexture(feltNormalCanvas);feltNormal.wrapS=feltNormal.wrapT=THREE.RepeatWrapping;feltNormal.repeat.set(2,2);
   const feltMat=new THREE.MeshStandardMaterial({color:'#ffffff',map:feltTexture,normalMap:feltNormal,normalScale:new THREE.Vector2(.28,.28),roughness:.96,metalness:0});
   // Optional CC0 Stretch Poplin PBR maps from Poly Haven provide actual woven-fiber detail; procedural felt stays as the offline fallback.
@@ -562,7 +561,7 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   canvas.addEventListener('wheel',event=>{event.preventDefault();cameraDistance=THREE.MathUtils.clamp(cameraDistance+event.deltaY*.006,5.4,10.5);},{passive:false});
 
   function resize(){
-    const r=root.getBoundingClientRect(),w=Math.max(320,r.width),h=Math.max(480,Math.min(720,r.height-80||620));
+    const r=root.getBoundingClientRect(),w=Math.max(320,r.width),h=Math.max(320,Math.min(580,r.height-70||500));
     renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
     canvas.style.width='100%';canvas.style.height=h+'px';
   }
@@ -571,8 +570,12 @@ import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.m
   observer.observe(root,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['class','style']});
   resize();syncScene(true);
   const clock=new THREE.Clock();
-  function animate(){
+  let lastFrame=0;
+  function animate(frameTime=0){
     requestAnimationFrame(animate);
+    if(document.hidden||!document.querySelector('#game')?.classList.contains('active'))return;
+    if(frameTime-lastFrame<33)return;
+    lastFrame=frameTime;
     const t=clock.getElapsedTime(), now=performance.now();
     fill.intensity=36+Math.sin(t*.6)*2;
     for(let i=cardFlights.length-1;i>=0;i--){
