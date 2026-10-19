@@ -9,9 +9,11 @@ const { Chess } = require('chess.js');
 const app = express();
 app.use(express.json({limit:'32kb'}));
 const CLIENT_ORIGIN = [...new Set([...(process.env.CLIENT_ORIGIN || '').split(','), 'https://gamb-mu.vercel.app', 'https://gamehunk.netlify.app', 'https://gamehunky.netlify.app'].map(x=>x.trim()).filter(Boolean))];
+// Allow this project's Vercel Git-branch preview URLs without opening CORS to arbitrary origins.
+const isGambVercelPreview = origin => /^https:\/\/gamb-git-[a-z0-9-]+-neal-singhal-s-projects\.vercel\.app$/i.test(String(origin || ''));
 app.use((req,res,next)=>{
   const origin = req.headers.origin;
-  if (origin && CLIENT_ORIGIN.includes(origin)) {
+  if (origin && (CLIENT_ORIGIN.includes(origin) || isGambVercelPreview(origin))) {
     res.setHeader('Access-Control-Allow-Origin', origin);
     res.setHeader('Vary', 'Origin');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
