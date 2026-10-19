@@ -11,6 +11,8 @@ test('netlify publishes public',()=>{const s=fs.readFileSync(path.join(root,'net
 test('configured socket URL is secure and remote',()=>{const s=fs.readFileSync(path.join(root,'public/app.js'),'utf8');assert.ok(s.includes('https://gamb-feature-preview.onrender.com')||s.includes('https://gamb-eu6t.onrender.com'));assert.doesNotMatch(s,/localhost:3000/) });
 test('server exposes health and authoritative poker phases',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');for(const x of ['/health','PREFLOP','FLOP','TURN','RIVER','SHOWDOWN','HAND_COMPLETE','pokerAction','addBot','blackjackAction','rouletteBet','chessMove','quickGame','/api/history','/api/daily','/api/leaderboard'])assert.match(s,new RegExp(x.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')))});
 
+test('leaderboard exposes current vault, largest loss, and net profit stats',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.match(s,/largestLoss/);assert.match(s,/netProfit/);assert.match(s,/vault:a\.tokens/);assert.match(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),/data-leaderboard-sort/)});
+test('daily loot box is only shown until claimed for the current UTC day',()=>{const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8'),html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');assert.match(app,/function renderDailyLootbox/);assert.match(app,/account\.daily\?\.lastClaim!==today/);assert.match(html,/id="dailyLootboxBtn"/);assert.doesNotMatch(html,/id="dailyBtn"/)});
 test('virtual-token safety and no payment rails',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.doesNotMatch(s,/stripe|paypal|coinbase|withdrawal.*cash|cash.*withdrawal/i);assert.match(fs.readFileSync(path.join(root,'public/app.js'),'utf8'),/Tokens are virtual|no cash value/i)});
 test('server-side randomness uses crypto',()=>{const s=fs.readFileSync(path.join(root,'server.js'),'utf8');assert.match(s,/crypto\.randomInt/);});
 
@@ -109,5 +111,28 @@ test('optional game hub features are present without changing authoritative game
 });
 test('developer login preview reports backend branch mismatch clearly',()=>{
  const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
- assert.match(app,/Developer sign-in is not available on the backend this preview is using/);
+ assert.match(app,/This backend does not expose developer sign-in/);
+});
+
+
+test('chess uses local minimax bots with four selectable difficulty levels',()=>{
+ const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ for(const marker of ['CHESS_BOT_LEVELS','minimaxChess','chooseChessMove','orderChessMoves','beginner','casual','club','expert'])assert.ok(server.includes(marker),marker);
+ for(const marker of ['data-chess-bot="beginner"','data-chess-bot="casual"','data-chess-bot="club"','data-chess-bot="expert"','type:\'Chess Bot\''])assert.ok(app.includes(marker),marker);
+ assert.match(server,/g\.undo\(\)/);
+});
+test('chess assigns distinct sides and rejects moves from the wrong player',()=>{
+ const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ assert.match(server,/new Map\(room\.players\.filter\(p=>p\.connected\|\|p\.bot\)\.map\(p=>\[p\.id,p\]\)\)/);
+ assert.match(server,/if\(duelists\[0\]\.id===duelists\[1\]\.id\)/);
+ assert.match(server,/if\(side!==p\.id\)return \{ok:false,error:'It is not your turn\.'\}/);
+});
+test('chess provides perspective flipping, legal target highlighting, move history, and result state',()=>{
+ const app=fs.readFileSync(path.join(root,'public/app.js'),'utf8');
+ const html=fs.readFileSync(path.join(root,'public/index.html'),'utf8');
+ const server=fs.readFileSync(path.join(root,'server.js'),'utf8');
+ for(const marker of ['chessFlipBtn','chessMoveList','whiteCaptured','blackCaptured','legal-target','last-from','piece-white','piece-black'])assert.ok(app.includes(marker),marker);
+ for(const marker of ['id="chessFlipBtn"','id="chessMoveList"','id="chessOpponentBar"','id="chessSelfBar"'])assert.ok(html.includes(marker),marker);
+ for(const marker of ['legalMoves','lastMove','gameOver','winnerId'])assert.ok(server.includes(marker),marker);
 });
